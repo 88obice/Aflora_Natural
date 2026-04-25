@@ -251,6 +251,65 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Toast de carrito -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+        <div id="cartToast" class="toast align-items-center border-0" role="alert" aria-atomic="true"
+             style="background-color:#3D2B1F; color:#fff; border-radius:4px; min-width:280px;">
+            <div class="d-flex">
+                <div class="toast-body" id="cartToastMsg" style="font-size:0.88rem; padding:0.85rem 1rem;">
+                    Producto agregado al carrito ✓
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // CSRF token para fetch
+    function getCookie(name) {
+        let v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+        return v ? v[2] : null;
+    }
+
+    // Toast helper
+    function mostrarToast(mensaje, esError = false) {
+        const toastEl = document.getElementById('cartToast');
+        const toastMsg = document.getElementById('cartToastMsg');
+        toastMsg.textContent = mensaje;
+        toastEl.style.backgroundColor = esError ? '#721c24' : '#3D2B1F';
+        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        toast.show();
+    }
+
+    // Interceptar botones con clase .btn-agregar-ajax
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-agregar-ajax');
+        if (!btn) return;
+        e.preventDefault();
+
+        const url    = btn.dataset.url;
+        const nombre = btn.dataset.nombre;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                mostrarToast(`"${data.nombre}" agregado al carrito ✓`);
+            } else {
+                mostrarToast(data.error, true);
+            }
+        })
+        .catch(() => mostrarToast('Error al agregar. Intenta de nuevo.', true));
+    });
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

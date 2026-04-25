@@ -75,7 +75,14 @@
                 <div class="d-flex justify-content-between align-items-center mt-auto">
                     <span class="precio">${{ producto.precio }}</span>
                     {% if producto.stock > 0 %}
-                        <a href="{% url 'catalogo:detalle_producto' producto.pk %}" class="btn btn-primary btn-sm">Ver más</a>
+                        <div class="d-flex gap-1">
+                            <a href="{% url 'catalogo:detalle_producto' producto.pk %}" class="btn btn-outline-secondary btn-sm">Ver</a>
+                            <button class="btn btn-primary btn-sm btn-agregar-ajax"
+                                    data-url="{% url 'carrito:agregar' producto.pk %}"
+                                    data-nombre="{{ producto.nombre }}">
+                                + Carrito
+                            </button>
+                        </div>
                     {% else %}
                         <span class="badge-agotado">Sin stock</span>
                     {% endif %}

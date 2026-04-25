@@ -102,10 +102,26 @@
             <div class="stock-badge disponible mb-3">
                 ✓ Disponible — {{ producto.stock }} unidad{{ producto.stock|pluralize:"es" }} en stock
             </div>
-            <div class="d-flex gap-3 flex-wrap">
-                <a href="{% url 'carrito:agregar' producto.pk %}" class="btn btn-primary btn-agregar">
+
+            <!-- Selector de cantidad + botón agregar -->
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="d-flex align-items-center" style="border:1px solid var(--rose-light); border-radius:2px; overflow:hidden;">
+                    <button type="button" id="btn-menos"
+                            style="width:38px;height:38px;background:none;border:none;font-size:1.2rem;color:var(--terracotta);cursor:pointer;">−</button>
+                    <input type="number" id="cantidad" value="1" min="1" max="{{ producto.stock }}"
+                           style="width:46px;height:38px;border:none;border-left:1px solid var(--rose-light);border-right:1px solid var(--rose-light);text-align:center;font-size:0.9rem;">
+                    <button type="button" id="btn-mas"
+                            style="width:38px;height:38px;background:none;border:none;font-size:1.2rem;color:var(--terracotta);cursor:pointer;">+</button>
+                </div>
+                <button class="btn btn-primary btn-agregar btn-agregar-ajax"
+                        id="btn-agregar-detalle"
+                        data-url="{% url 'carrito:agregar' producto.pk %}"
+                        data-nombre="{{ producto.nombre }}">
                     Agregar al carrito
-                </a>
+                </button>
+            </div>
+
+            <div class="d-flex gap-3 flex-wrap">
                 <a href="https://wa.me/56989560937?text=Hola!%20Me%20interesa%20el%20producto%3A%20{{ producto.nombre|urlencode }}"
                    target="_blank"
                    class="btn btn-agregar"
@@ -131,4 +147,72 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const inputCantidad = document.getElementById('cantidad');
+    const btnMenos   = document.getElementById('btn-menos');
+    const btnMas     = document.getElementById('btn-mas');
+    const btnAgregar = document.getElementById('btn-agregar-detalle');
+
+    if (inputCantidad && btnMenos && btnMas && btnAgregar) {
+        const max = parseInt(inputCantidad.max);
+
+        btnMenos.addEventListener('click', () => {
+            let v = parseInt(inputCantidad.value);
+            if (v > 1) inputCantidad.value = v - 1;
+        });
+
+        btnMas.addEventListener('click', () => {
+            let v = parseInt(inputCantidad.value);
+            if (v < max) inputCantidad.value = v + 1;
+        });
+
+        // Este botón maneja la cantidad — evita que el listener global lo capture
+        btnAgregar.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const url      = this.dataset.url;
+            const nombre   = this.dataset.nombre;
+            const cantidad = parseInt(inputCantidad.value) || 1;
+
+            function getCookie(name) {
+                let v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+                return v ? v[2] : null;
+            }
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `cantidad=${cantidad}`,
+            })
+            .then(r => r.json())
+            .then(data => {
+                const toastEl  = document.getElementById('cartToast');
+                const toastMsg = document.getElementById('cartToastMsg');
+                if (data.ok) {
+                    toastMsg.textContent = `${data.cantidad > 1 ? data.cantidad + '× ' : ''}"${data.nombre}" agregado al carrito ✓`;
+                    toastEl.style.backgroundColor = '#3D2B1F';
+                } else {
+                    toastMsg.textContent = data.error;
+                    toastEl.style.backgroundColor = '#721c24';
+                }
+                new bootstrap.Toast(toastEl, { delay: 3000 }).show();
+            })
+            .catch(() => {
+                const toastEl  = document.getElementById('cartToast');
+                const toastMsg = document.getElementById('cartToastMsg');
+                toastMsg.textContent = 'Error al agregar. Intenta de nuevo.';
+                toastEl.style.backgroundColor = '#721c24';
+                new bootstrap.Toast(toastEl, { delay: 3000 }).show();
+            });
+        });
+    }
+</script>
 {% endblock %}
