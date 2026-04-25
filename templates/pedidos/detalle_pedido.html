@@ -42,7 +42,7 @@
             <div class="label">Estado</div>
             <div class="value"><span class="estado-badge">{{ pedido.get_estado_display }}</span></div>
             <div class="label">Fecha</div>
-            <div class="value">{{ pedido.creado|date:"d de F, Y — H:i" }}</div>
+            <div class="value">{{ pedido.creado|date:"d/m/Y H:i" }}</div>
             <div class="label">Dirección de entrega</div>
             <div class="value">{{ pedido.direccion_entrega }}</div>
             <div class="label">Teléfono</div>

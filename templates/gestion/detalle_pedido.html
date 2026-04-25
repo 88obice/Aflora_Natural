@@ -68,7 +68,7 @@
             <div class="label">Dirección</div>
             <div class="value">{{ pedido.direccion_entrega }}</div>
             <div class="label">Fecha del pedido</div>
-            <div class="value">{{ pedido.creado|date:"d de F, Y — H:i" }}</div>
+            <div class="value">{{ pedido.creado|date:"d/m/Y H:i" }}</div>
 
             <!-- Botón WhatsApp al cliente -->
             <a href="https://wa.me/{{ pedido.telefono|cut:' '|cut:'+'|cut:'-' }}?text=Hola%20{{ pedido.usuario.username }}!%20Te%20escribimos%20de%20Aflora%20Natural%20sobre%20tu%20pedido%20%23{{ pedido.id }}."
