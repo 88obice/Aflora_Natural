@@ -126,6 +126,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+MP_PUBLIC_KEY  = os.getenv('MP_PUBLIC_KEY')
+MP_ACCESS_TOKEN = os.getenv('MP_ACCESS_TOKEN')
+
 STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

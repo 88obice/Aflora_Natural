@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} — Aflora Natural{% endblock %}
+
+{% block extra_css %}
+<style>
+    .resultado-wrap {
+        max-width: 500px;
+        margin: 4rem auto;
+        text-align: center;
+        background: #fff;
+        border: 1px solid var(--rose-light);
+        border-radius: 4px;
+        padding: 3rem 2rem;
+    }
+    .resultado-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+    .resultado-wrap h2 { margin-bottom: 0.8rem; }
+    .resultado-wrap p { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="resultado-wrap">
+    {% if tipo == 'exito' %}
+        <div class="resultado-icon">✓</div>
+    {% elif tipo == 'error' %}
+        <div class="resultado-icon">✗</div>
+    {% else %}
+        <div class="resultado-icon">⏳</div>
+    {% endif %}
+
+    <h2>{{ titulo }}</h2>
+    <p>{{ mensaje }}</p>
+
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+        <a href="{% url 'catalogo:inicio' %}" class="btn btn-primary">Volver al inicio</a>
+        <a href="https://wa.me/56989560937" target="_blank"
+           class="btn" style="background-color:#25D366; color:#fff; border-color:#25D366;">
+            Contactar por WhatsApp
+        </a>
+    </div>
+</div>
+{% endblock %}
