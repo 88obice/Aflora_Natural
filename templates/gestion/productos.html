@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Productos — Gestión Aflora Natural{% endblock %}
+
+{% block extra_css %}
+<style>
+    .gestion-nav {
+        background: #fff; border: 1px solid var(--rose-light); border-radius: 4px;
+        padding: 0.8rem 1.2rem; margin-bottom: 2rem;
+        display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;
+    }
+    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; letter-spacing:0.04em; padding-bottom:2px; border-bottom:2px solid transparent; transition: color 0.2s, border-color 0.2s; }
+    .gestion-nav a:hover, .gestion-nav a.active { color:var(--terracotta); border-bottom-color:var(--terracotta); }
+    .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
+
+    .products-table th { font-size:0.75rem; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); font-weight:400; border-color:var(--rose-light); }
+    .products-table td { font-size:0.88rem; border-color:var(--rose-light); vertical-align:middle; }
+    .product-name { font-family:'Playfair Display',serif; }
+
+    .stock-pill {
+        display:inline-block; padding:0.2em 0.7em; border-radius:20px; font-size:0.75rem;
+        background-color: var(--rose-light); color: var(--terracotta);
+    }
+    .stock-pill.bajo   { background-color:#fff3cd; color:#856404; }
+    .stock-pill.agotado { background-color:#f8d7da; color:#721c24; }
+    .stock-pill.ok     { background-color:#d4edda; color:#155724; }
+
+    .disponible-si { color:#27ae60; font-size:0.85rem; }
+    .disponible-no { color:#c0392b; font-size:0.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="gestion-nav">
+    <span class="nav-title">Gestión</span>
+    <a href="{% url 'gestion:dashboard' %}">Dashboard</a>
+    <a href="{% url 'gestion:pedidos' %}">Pedidos</a>
+    <a href="{% url 'gestion:productos' %}" class="active">Productos</a>
+    <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Productos</h2>
+    <a href="/admin/catalogo/producto/add/" class="btn btn-primary btn-sm">+ Agregar producto</a>
+</div>
+
+<div class="table-responsive">
+    <table class="table products-table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Disponible</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for producto in productos %}
+            <tr>
+                <td class="product-name">{{ producto.nombre }}</td>
+                <td class="text-muted">{{ producto.categoria }}</td>
+                <td class="precio">${{ producto.precio }}</td>
+                <td>
+                    {% if producto.stock == 0 %}
+                        <span class="stock-pill agotado">Agotado</span>
+                    {% elif producto.stock <= 3 %}
+                        <span class="stock-pill bajo">{{ producto.stock }} — Poco stock</span>
+                    {% else %}
+                        <span class="stock-pill ok">{{ producto.stock }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if producto.disponible %}
+                        <span class="disponible-si">✓ Sí</span>
+                    {% else %}
+                        <span class="disponible-no">✗ No</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/admin/catalogo/producto/{{ producto.pk }}/change/"
+                       class="btn btn-outline-secondary btn-sm">
+                        Editar
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

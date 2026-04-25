@@ -1,25 +1,53 @@
 {% extends 'base.html' %}
 
-{% block title %}Registro - Aflora Natural{% endblock %}
+{% block title %}Crear cuenta — Aflora Natural{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-panel {
+        max-width: 480px;
+        margin: 3rem auto;
+        background: #fff;
+        border: 1px solid var(--rose-light);
+        border-radius: 4px;
+        padding: 2.5rem 2rem;
+    }
+    .auth-panel h2 { text-align: center; margin-bottom: 0.3rem; }
+    .auth-panel .subtitle { text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 2rem; }
+    .form-label { font-size: 0.83rem; color: var(--text-muted); letter-spacing: 0.04em; }
+    .form-control { border-color: var(--rose-light); border-radius: 2px; font-size: 0.9rem; }
+    .form-control:focus { border-color: var(--terracotta); box-shadow: 0 0 0 0.15rem rgba(139, 94, 60, 0.15); }
+    .help-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+    .auth-footer { text-align: center; margin-top: 1.2rem; font-size: 0.85rem; color: var(--text-muted); }
+    .auth-footer a { color: var(--terracotta); text-decoration: none; }
+    .auth-footer a:hover { text-decoration: underline; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <h2 class="mb-4 text-center">Crear cuenta</h2>
-        <form method="post">
-            {% csrf_token %}
-            {% for field in form %}
-                <div class="mb-3">
-                    <label class="form-label">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.errors %}
-                        <div class="text-danger small">{{ field.errors }}</div>
-                    {% endif %}
-                </div>
-            {% endfor %}
-            <button type="submit" class="btn btn-primary w-100">Registrarse</button>
-        </form>
-        <p class="text-center mt-3">¿Ya tienes cuenta? <a href="{% url 'usuarios:login' %}">Inicia sesión</a></p>
+<div class="auth-panel">
+    <h2>Crear cuenta</h2>
+    <div class="subtitle">Regístrate para hacer tus pedidos</div>
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <div class="help-text">{{ field.help_text }}</div>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="text-danger small mt-1">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary w-100 mt-2" style="padding:0.75rem; letter-spacing:0.08em; text-transform:uppercase; font-size:0.85rem;">
+            Crear cuenta
+        </button>
+    </form>
+    <div class="auth-footer">
+        ¿Ya tienes cuenta? <a href="{% url 'usuarios:login' %}">Inicia sesión</a>
     </div>
 </div>
 {% endblock %}

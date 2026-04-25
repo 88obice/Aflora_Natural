@@ -9,4 +9,5 @@ urlpatterns = [
     path('carrito/', include('carrito.urls')),
     path('pedidos/', include('pedidos.urls')),
     path('usuarios/', include('usuarios.urls')),
+    path('gestion/', include('gestion.urls')),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

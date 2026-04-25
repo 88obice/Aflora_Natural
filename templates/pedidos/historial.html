@@ -1,34 +1,72 @@
 {% extends 'base.html' %}
 
-{% block title %}Mis pedidos - Aflora Natural{% endblock %}
+{% block title %}Mis pedidos — Aflora Natural{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header { padding: 1.5rem 0 1.2rem; border-bottom: 1px solid var(--rose-light); margin-bottom: 2rem; }
+    .orders-table thead th {
+        font-size: 0.78rem;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--rose-light);
+        font-weight: 400;
+    }
+    .orders-table td { vertical-align: middle; border-color: var(--rose-light); font-size: 0.9rem; }
+    .estado-badge {
+        display: inline-block;
+        padding: 0.25em 0.8em;
+        border-radius: 2px;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        background-color: var(--rose-light);
+        color: var(--terracotta);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Mis pedidos</h2>
+
+<div class="page-header">
+    <h2>Mis pedidos</h2>
+</div>
 
 {% if pedidos %}
-<table class="table">
-    <thead>
-        <tr>
-            <th>#</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-            <th>Total</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for pedido in pedidos %}
-        <tr>
-            <td>{{ pedido.id }}</td>
-            <td>{{ pedido.creado|date:"d/m/Y" }}</td>
-            <td><span class="badge bg-secondary">{{ pedido.get_estado_display }}</span></td>
-            <td>${{ pedido.total }}</td>
-            <td><a href="{% url 'pedidos:detalle_pedido' pedido.pk %}" class="btn btn-outline-primary btn-sm">Ver detalle</a></td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="table-responsive">
+    <table class="table orders-table">
+        <thead>
+            <tr>
+                <th>N°</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pedido in pedidos %}
+            <tr>
+                <td style="color:var(--text-muted);">#{{ pedido.id }}</td>
+                <td>{{ pedido.creado|date:"d/m/Y" }}</td>
+                <td><span class="estado-badge">{{ pedido.get_estado_display }}</span></td>
+                <td class="precio">${{ pedido.total }}</td>
+                <td>
+                    <a href="{% url 'pedidos:detalle_pedido' pedido.pk %}" class="btn btn-outline-primary btn-sm">
+                        Ver detalle
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% else %}
-    <p class="text-muted">No tienes pedidos aún. <a href="{% url 'catalogo:lista_productos' %}">Ver catálogo</a></p>
+<div class="text-center py-5">
+    <div style="font-size:3rem; color:var(--rose-light); margin-bottom:1rem;">📦</div>
+    <p class="text-muted fst-italic mb-3">Aún no tienes pedidos.</p>
+    <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary">Ver catálogo</a>
+</div>
 {% endif %}
+
 {% endblock %}

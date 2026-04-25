@@ -1,42 +1,83 @@
 {% extends 'base.html' %}
 
-{% block title %}Finalizar compra - Aflora Natural{% endblock %}
+{% block title %}Finalizar compra — Aflora Natural{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header { padding: 1.5rem 0 1.2rem; border-bottom: 1px solid var(--rose-light); margin-bottom: 2rem; }
+    .section-label {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.15rem;
+        margin-bottom: 1.2rem;
+    }
+    .order-table td { border-color: var(--rose-light); font-size: 0.9rem; }
+    .order-total { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--terracotta); }
+    .form-label { font-size: 0.85rem; color: var(--text-muted); letter-spacing: 0.04em; }
+    .form-control {
+        border-color: var(--rose-light);
+        border-radius: 2px;
+        font-size: 0.9rem;
+    }
+    .form-control:focus {
+        border-color: var(--terracotta);
+        box-shadow: 0 0 0 0.15rem rgba(139, 94, 60, 0.15);
+    }
+    .checkout-panel {
+        background: #fff;
+        border: 1px solid var(--rose-light);
+        border-radius: 4px;
+        padding: 1.8rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Finalizar compra</h2>
+
+<div class="page-header">
+    <h2>Finalizar compra</h2>
+</div>
 
 <div class="row">
-    <div class="col-md-6">
-        <h5>Resumen del pedido</h5>
-        <table class="table">
-            {% for item in carrito.items.all %}
-            <tr>
-                <td>{{ item.producto.nombre }}</td>
-                <td>x{{ item.cantidad }}</td>
-                <td>${{ item.subtotal }}</td>
-            </tr>
-            {% endfor %}
-            <tr class="fw-bold">
-                <td colspan="2">Total</td>
-                <td>${{ carrito.total }}</td>
-            </tr>
-        </table>
+    <!-- Resumen del pedido -->
+    <div class="col-md-5">
+        <div class="checkout-panel mb-4 mb-md-0">
+            <div class="section-label">Resumen</div>
+            <table class="table order-table">
+                {% for item in carrito.items.all %}
+                <tr>
+                    <td>{{ item.producto.nombre }}</td>
+                    <td class="text-muted">×{{ item.cantidad }}</td>
+                    <td class="text-end">${{ item.subtotal }}</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td colspan="2" class="fw-bold text-end" style="border-bottom:0;">Total</td>
+                    <td class="text-end order-total" style="border-bottom:0;">${{ carrito.total }}</td>
+                </tr>
+            </table>
+        </div>
     </div>
 
-    <div class="col-md-6">
-        <h5>Datos de entrega</h5>
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label class="form-label">Dirección de entrega</label>
-                <textarea name="direccion" class="form-control" rows="3" required></textarea>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Teléfono</label>
-                <input type="text" name="telefono" class="form-control" required>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Confirmar pedido</button>
-        </form>
+    <!-- Formulario de entrega -->
+    <div class="col-md-7">
+        <div class="checkout-panel">
+            <div class="section-label">Datos de entrega</div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Dirección de entrega</label>
+                    <textarea name="direccion" class="form-control" rows="3" placeholder="Calle, número, comuna, ciudad" required></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Teléfono de contacto</label>
+                    <input type="text" name="telefono" class="form-control" placeholder="+56 9 XXXX XXXX" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100" style="padding:0.8rem; font-size:0.9rem; letter-spacing:0.08em; text-transform:uppercase;">
+                    Confirmar pedido
+                </button>
+            </form>
+        </div>
     </div>
 </div>
+
 {% endblock %}

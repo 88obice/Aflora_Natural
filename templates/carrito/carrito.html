@@ -1,48 +1,104 @@
 {% extends 'base.html' %}
 
-{% block title %}Carrito - Aflora Natural{% endblock %}
+{% block title %}Carrito — Aflora Natural{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header { padding: 1.5rem 0 1.2rem; border-bottom: 1px solid var(--rose-light); margin-bottom: 2rem; }
+    .cart-table thead th {
+        font-family: 'Lato', sans-serif;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--rose-light);
+        font-weight: 400;
+    }
+    .cart-table td { vertical-align: middle; border-color: var(--rose-light); }
+    .cart-table .product-name { font-family: 'Playfair Display', serif; }
+    .total-row { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--terracotta); }
+    .btn-remove {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        background: none;
+        border: none;
+        text-decoration: underline;
+        padding: 0;
+    }
+    .btn-remove:hover { color: #c0392b; }
+    .cart-summary {
+        background: #fff;
+        border: 1px solid var(--rose-light);
+        border-radius: 4px;
+        padding: 1.5rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Tu carrito</h2>
 
-{% if carrito.items.all %}
-<div class="table-responsive">
-    <table class="table align-middle">
-        <thead>
-            <tr>
-                <th>Producto</th>
-                <th>Precio</th>
-                <th>Cantidad</th>
-                <th>Subtotal</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in carrito.items.all %}
-            <tr>
-                <td>{{ item.producto.nombre }}</td>
-                <td>${{ item.producto.precio }}</td>
-                <td>{{ item.cantidad }}</td>
-                <td>${{ item.subtotal }}</td>
-                <td>
-                    <a href="{% url 'carrito:eliminar' item.pk %}" class="btn btn-danger btn-sm">Eliminar</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="page-header">
+    <h2>Tu carrito</h2>
 </div>
 
-<div class="text-end">
-    <h4>Total: ${{ carrito.total }}</h4>
-    {% if user.is_authenticated %}
-        <a href="{% url 'pedidos:crear_pedido' %}" class="btn btn-primary btn-lg">Finalizar compra</a>
-    {% else %}
-        <a href="{% url 'usuarios:login' %}" class="btn btn-primary btn-lg">Inicia sesión para comprar</a>
-    {% endif %}
+{% if carrito.items.all %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="table-responsive">
+            <table class="table cart-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Precio</th>
+                        <th>Cantidad</th>
+                        <th>Subtotal</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in carrito.items.all %}
+                    <tr>
+                        <td class="product-name">{{ item.producto.nombre }}</td>
+                        <td class="text-muted">${{ item.producto.precio }}</td>
+                        <td>{{ item.cantidad }}</td>
+                        <td class="precio">${{ item.subtotal }}</td>
+                        <td>
+                            <a href="{% url 'carrito:eliminar' item.pk %}" class="btn-remove">Eliminar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-outline-secondary btn-sm">← Seguir comprando</a>
+    </div>
+
+    <div class="col-lg-4 mt-4 mt-lg-0">
+        <div class="cart-summary">
+            <div class="d-flex justify-content-between align-items-baseline mb-3">
+                <span style="font-size:0.85rem; color:var(--text-muted);">Total del pedido</span>
+                <span class="total-row">${{ carrito.total }}</span>
+            </div>
+            <hr style="border-color: var(--rose-light);">
+            {% if user.is_authenticated %}
+                <a href="{% url 'pedidos:crear_pedido' %}" class="btn btn-primary w-100">
+                    Finalizar compra
+                </a>
+            {% else %}
+                <a href="{% url 'usuarios:login' %}" class="btn btn-primary w-100">
+                    Iniciar sesión para comprar
+                </a>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 {% else %}
-    <p class="text-muted">Tu carrito está vacío. <a href="{% url 'catalogo:lista_productos' %}">Ver catálogo</a></p>
+<div class="text-center py-5">
+    <div style="font-size:3rem; color:var(--rose-light); margin-bottom:1rem;">🛒</div>
+    <p class="text-muted fst-italic mb-3">Tu carrito está vacío.</p>
+    <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary">Ver catálogo</a>
+</div>
 {% endif %}
+
 {% endblock %}

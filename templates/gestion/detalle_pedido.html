@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}Pedido #{{ pedido.id }} — Gestión Aflora Natural{% endblock %}
+
+{% block extra_css %}
+<style>
+    .gestion-nav {
+        background: #fff; border: 1px solid var(--rose-light); border-radius: 4px;
+        padding: 0.8rem 1.2rem; margin-bottom: 2rem;
+        display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;
+    }
+    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; letter-spacing:0.04em; padding-bottom:2px; border-bottom:2px solid transparent; transition: color 0.2s, border-color 0.2s; }
+    .gestion-nav a:hover, .gestion-nav a.active { color:var(--terracotta); border-bottom-color:var(--terracotta); }
+    .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
+
+    .info-panel, .items-panel, .status-panel {
+        background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1.8rem;
+    }
+    .info-panel .label { font-size:0.75rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.15rem; }
+    .info-panel .value { font-size:0.92rem; margin-bottom:1rem; }
+    .section-label { font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:1.2rem; }
+    .items-table td { font-size:0.88rem; border-color:var(--rose-light); }
+    .items-total { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--terracotta); }
+
+    .estado-badge { display:inline-block; padding:0.3em 0.9em; border-radius:2px; font-size:0.8rem; letter-spacing:0.06em; background-color:var(--rose-light); color:var(--terracotta); }
+    .estado-badge.enviado   { background-color:#d4edda; color:#155724; }
+    .estado-badge.entregado { background-color:#cce5ff; color:#004085; }
+    .estado-badge.cancelado { background-color:#f8d7da; color:#721c24; }
+
+    .form-select { border-color:var(--rose-light); border-radius:2px; font-size:0.9rem; }
+    .form-select:focus { border-color:var(--terracotta); box-shadow:0 0 0 0.15rem rgba(139,94,60,0.15); }
+
+    .whatsapp-btn {
+        background-color:#25D366; border-color:#25D366; color:#fff;
+        font-size:0.82rem; border-radius:2px;
+    }
+    .whatsapp-btn:hover { background-color:#1da851; border-color:#1da851; color:#fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="gestion-nav">
+    <span class="nav-title">Gestión</span>
+    <a href="{% url 'gestion:dashboard' %}">Dashboard</a>
+    <a href="{% url 'gestion:pedidos' %}" class="active">Pedidos</a>
+    <a href="{% url 'gestion:productos' %}">Productos</a>
+    <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Pedido <span style="color:var(--terracotta);">#{{ pedido.id }}</span></h2>
+    <a href="{% url 'gestion:pedidos' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+</div>
+
+<div class="row g-4">
+
+    <!-- Info del cliente -->
+    <div class="col-md-4">
+        <div class="info-panel">
+            <div class="section-label">Cliente</div>
+            <div class="label">Usuario</div>
+            <div class="value">{{ pedido.usuario.username }}</div>
+            <div class="label">Email</div>
+            <div class="value">{{ pedido.usuario.email|default:"—" }}</div>
+            <div class="label">Teléfono</div>
+            <div class="value">{{ pedido.telefono }}</div>
+            <div class="label">Dirección</div>
+            <div class="value">{{ pedido.direccion_entrega }}</div>
+            <div class="label">Fecha del pedido</div>
+            <div class="value">{{ pedido.creado|date:"d de F, Y — H:i" }}</div>
+
+            <!-- Botón WhatsApp al cliente -->
+            <a href="https://wa.me/{{ pedido.telefono|cut:' '|cut:'+'|cut:'-' }}?text=Hola%20{{ pedido.usuario.username }}!%20Te%20escribimos%20de%20Aflora%20Natural%20sobre%20tu%20pedido%20%23{{ pedido.id }}."
+               target="_blank"
+               class="btn whatsapp-btn btn-sm w-100 mt-2">
+                Contactar por WhatsApp
+            </a>
+        </div>
+    </div>
+
+    <!-- Productos del pedido -->
+    <div class="col-md-5">
+        <div class="items-panel">
+            <div class="section-label">Productos</div>
+            <table class="table items-table mb-0">
+                {% for item in pedido.items.all %}
+                <tr>
+                    <td>{{ item.producto.nombre }}</td>
+                    <td class="text-muted">×{{ item.cantidad }}</td>
+                    <td class="text-end">${{ item.subtotal }}</td>
+                </tr>
+                {% endfor %}
+                <tr style="border-top:2px solid var(--rose-light);">
+                    <td colspan="2" class="text-end fw-bold" style="border-bottom:0;">Total</td>
+                    <td class="text-end items-total" style="border-bottom:0;">${{ pedido.total }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Cambio de estado -->
+    <div class="col-md-3">
+        <div class="status-panel">
+            <div class="section-label">Estado</div>
+            <div class="mb-3">
+                <span class="estado-badge {{ pedido.estado }}">{{ pedido.get_estado_display }}</span>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:0.8rem; color:var(--text-muted);">Cambiar a</label>
+                    <select name="estado" class="form-select">
+                        {% for valor, etiqueta in pedido.ESTADO_CHOICES %}
+                            <option value="{{ valor }}" {% if pedido.estado == valor %}selected{% endif %}>
+                                {{ etiqueta }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary w-100" style="font-size:0.85rem;">
+                    Actualizar estado
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

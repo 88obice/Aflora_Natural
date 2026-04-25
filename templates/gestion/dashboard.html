@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Panel de gestión — Aflora Natural{% endblock %}
+
+{% block extra_css %}
+<style>
+    .gestion-nav {
+        background: #fff;
+        border: 1px solid var(--rose-light);
+        border-radius: 4px;
+        padding: 0.8rem 1.2rem;
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .gestion-nav a {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        letter-spacing: 0.04em;
+        padding-bottom: 2px;
+        border-bottom: 2px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
+    }
+    .gestion-nav a:hover,
+    .gestion-nav a.active {
+        color: var(--terracotta);
+        border-bottom-color: var(--terracotta);
+    }
+    .gestion-nav .nav-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 0.95rem;
+        color: var(--terracotta);
+        margin-right: 0.5rem;
+    }
+
+    .stat-card {
+        background: #fff;
+        border: 1px solid var(--rose-light);
+        border-radius: 4px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    .stat-number {
+        font-family: 'Playfair Display', serif;
+        font-size: 2.5rem;
+        color: var(--terracotta);
+        line-height: 1;
+        margin-bottom: 0.4rem;
+    }
+    .stat-label {
+        font-size: 0.8rem;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+    .stat-card.alerta .stat-number { color: #c0392b; }
+    .stat-card.ok    .stat-number { color: #27ae60; }
+
+    .section-label {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        margin-top: 2rem;
+    }
+    .recent-table td { font-size: 0.88rem; border-color: var(--rose-light); vertical-align: middle; }
+    .recent-table th {
+        font-size: 0.75rem; letter-spacing: 0.07em; text-transform: uppercase;
+        color: var(--text-muted); font-weight: 400; border-color: var(--rose-light);
+    }
+    .estado-badge {
+        display: inline-block;
+        padding: 0.25em 0.8em;
+        border-radius: 2px;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        background-color: var(--rose-light);
+        color: var(--terracotta);
+    }
+    .estado-badge.enviado   { background-color: #d4edda; color: #155724; }
+    .estado-badge.entregado { background-color: #cce5ff; color: #004085; }
+    .estado-badge.cancelado { background-color: #f8d7da; color: #721c24; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="gestion-nav">
+    <span class="nav-title">Gestión</span>
+    <a href="{% url 'gestion:dashboard' %}" class="active">Dashboard</a>
+    <a href="{% url 'gestion:pedidos' %}">Pedidos</a>
+    <a href="{% url 'gestion:productos' %}">Productos</a>
+    <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
+</div>
+
+<h2 class="mb-1">Bienvenida, {{ request.user.first_name|default:request.user.username }}</h2>
+<p class="text-muted mb-4" style="font-size:0.88rem;">Resumen del estado actual de la tienda</p>
+
+<!-- Stats -->
+<div class="row g-3 mb-2">
+    <div class="col-6 col-md-4">
+        <div class="stat-card {% if pedidos_nuevos > 0 %}alerta{% endif %}">
+            <div class="stat-number">{{ pedidos_nuevos }}</div>
+            <div class="stat-label">Pedidos pendientes</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="stat-card">
+            <div class="stat-number">{{ total_pedidos }}</div>
+            <div class="stat-label">Pedidos totales</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="stat-card {% if productos_bajo_stock > 0 %}alerta{% endif %}">
+            <div class="stat-number">{{ productos_bajo_stock }}</div>
+            <div class="stat-label">Productos con poco stock</div>
+        </div>
+    </div>
+</div>
+
+<!-- Pedidos recientes -->
+<div class="section-label">Pedidos recientes</div>
+{% if pedidos_recientes %}
+<div class="table-responsive">
+    <table class="table recent-table">
+        <thead>
+            <tr>
+                <th>N°</th>
+                <th>Cliente</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pedido in pedidos_recientes %}
+            <tr>
+                <td style="color:var(--text-muted);">#{{ pedido.id }}</td>
+                <td>{{ pedido.usuario.username }}</td>
+                <td>{{ pedido.creado|date:"d/m/Y H:i" }}</td>
+                <td>
+                    <span class="estado-badge {{ pedido.estado }}">
+                        {{ pedido.get_estado_display }}
+                    </span>
+                </td>
+                <td class="precio">${{ pedido.total }}</td>
+                <td>
+                    <a href="{% url 'gestion:detalle_pedido' pedido.pk %}" class="btn btn-outline-primary btn-sm">
+                        Ver
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<a href="{% url 'gestion:pedidos' %}" class="btn btn-outline-secondary btn-sm">Ver todos los pedidos →</a>
+{% else %}
+<p class="text-muted fst-italic">No hay pedidos aún.</p>
+{% endif %}
+
+{% endblock %}

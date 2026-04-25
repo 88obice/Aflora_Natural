@@ -1,33 +1,173 @@
 {% extends 'base.html' %}
 
-{% block title %}Inicio - Aflora Natural{% endblock %}
+{% block title %}Aflora Natural — Aromas que transforman{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero {
+        background-color: #F0E8DE;
+        border-radius: 4px;
+        padding: 4.5rem 2rem;
+        text-align: center;
+        margin-bottom: 3.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .hero::before {
+        content: '';
+        position: absolute;
+        top: -60px; right: -60px;
+        width: 240px; height: 240px;
+        border-radius: 50%;
+        background: rgba(201, 169, 154, 0.18);
+    }
+    .hero::after {
+        content: '';
+        position: absolute;
+        bottom: -40px; left: -40px;
+        width: 180px; height: 180px;
+        border-radius: 50%;
+        background: rgba(196, 147, 63, 0.1);
+    }
+    .hero h1 {
+        font-size: clamp(2rem, 5vw, 3rem);
+        color: var(--terracotta-d);
+        margin-bottom: 1rem;
+        position: relative; z-index: 1;
+    }
+    .hero p {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+        max-width: 480px;
+        margin: 0 auto 2rem;
+        position: relative; z-index: 1;
+    }
+    .hero .btn {
+        position: relative; z-index: 1;
+        padding: 0.75rem 2.5rem;
+        font-size: 0.9rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    .section-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.6rem;
+        color: var(--text);
+        margin-bottom: 0.3rem;
+    }
+    .section-subtitle {
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        margin-bottom: 1.8rem;
+    }
+
+    .product-card .card-body { padding: 1.1rem 1.2rem; }
+    .product-card .card-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1rem;
+        margin-bottom: 0.3rem;
+    }
+    .product-card .card-img-top {
+        height: 210px;
+        object-fit: cover;
+    }
+    .product-card .placeholder-img {
+        height: 210px;
+        background: linear-gradient(135deg, #F0E8DE 0%, #EDD9D1 100%);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-muted);
+        font-size: 2rem;
+    }
+
+    .features {
+        background-color: #fff;
+        border: 1px solid var(--rose-light);
+        border-radius: 4px;
+        padding: 2.5rem 1.5rem;
+        margin-top: 3.5rem;
+        text-align: center;
+    }
+    .feature-icon {
+        font-size: 2rem;
+        margin-bottom: 0.7rem;
+    }
+    .feature-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1rem;
+        color: var(--terracotta);
+        margin-bottom: 0.4rem;
+    }
+    .feature-text {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col text-center">
-        <h1 class="display-5 fw-bold">Bienvenida a Aflora Natural</h1>
-        <p class="lead text-muted">Velas aromáticas, homesprays y difusores naturales</p>
-        <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary btn-lg">Ver Catálogo</a>
-    </div>
+
+<!-- Hero -->
+<div class="hero">
+    <h1>Bienvenida a Aflora Natural</h1>
+    <p>Velas aromáticas, homesprays y difusores artesanales hechos con ingredientes naturales. Cada aroma, una experiencia.</p>
+    <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary">Ver Catálogo</a>
 </div>
 
-<h4 class="mb-3">Productos destacados</h4>
-<div class="row row-cols-1 row-cols-md-4 g-4">
+<!-- Productos destacados -->
+<div class="d-flex justify-content-between align-items-end mb-1">
+    <div>
+        <div class="section-title">Productos destacados</div>
+        <div class="section-subtitle">Selección de aromas para tu hogar</div>
+    </div>
+    <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-outline-secondary btn-sm mb-3">Ver todos →</a>
+</div>
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
     {% for producto in productos %}
     <div class="col">
-        <div class="card h-100 shadow-sm">
+        <div class="card h-100 product-card shadow-sm">
             {% if producto.imagen %}
-                <img src="{{ producto.imagen.url }}" class="card-img-top" style="height:200px; object-fit:cover;">
+                <img src="{{ producto.imagen.url }}" class="card-img-top" alt="{{ producto.nombre }}">
+            {% else %}
+                <div class="placeholder-img">🌿</div>
             {% endif %}
-            <div class="card-body">
-                <h6 class="card-title">{{ producto.nombre }}</h6>
-                <p class="text-muted">${{ producto.precio }}</p>
-                <a href="{% url 'catalogo:detalle_producto' producto.pk %}" class="btn btn-primary btn-sm">Ver más</a>
+            <div class="card-body d-flex flex-column">
+                <div class="card-title">{{ producto.nombre }}</div>
+                <div class="precio mb-2">${{ producto.precio }}</div>
+                {% if producto.stock == 0 %}
+                    <span class="badge-agotado d-inline-block mb-2">Sin stock</span>
+                {% endif %}
+                <a href="{% url 'catalogo:detalle_producto' producto.pk %}" class="btn btn-outline-primary btn-sm mt-auto">Ver más</a>
             </div>
         </div>
     </div>
     {% empty %}
-        <p class="text-muted">No hay productos disponibles aún.</p>
+    <div class="col-12">
+        <p class="text-muted fst-italic">Pronto habrá productos disponibles.</p>
+    </div>
     {% endfor %}
 </div>
+
+<!-- Propuesta de valor -->
+<div class="features">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="feature-icon">🌿</div>
+            <div class="feature-title">100% Natural</div>
+            <div class="feature-text">Ingredientes naturales, sin químicos artificiales ni conservantes.</div>
+        </div>
+        <div class="col-md-4">
+            <div class="feature-icon">✂️</div>
+            <div class="feature-title">Artesanal</div>
+            <div class="feature-text">Cada producto elaborado a mano en pequeños lotes con dedicación.</div>
+        </div>
+        <div class="col-md-4">
+            <div class="feature-icon">📦</div>
+            <div class="feature-title">Envío a Chile</div>
+            <div class="feature-text">Coordinamos entrega y despacho a todo Santiago y regiones.</div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
