@@ -2,7 +2,7 @@
 builder = "nixpacks"
 
 [deploy]
-preDeployCommand = "python manage.py migrate --noinput"
+preDeployCommand = "python manage.py migrate --noinput && python manage.py collectstatic --noinput"
 startCommand = "gunicorn aflora_natural.wsgi --workers 2 --bind 0.0.0.0:$PORT"
 healthcheckPath = "/"
 healthcheckTimeout = 30
