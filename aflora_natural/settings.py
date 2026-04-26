@@ -48,8 +48,6 @@ INSTALLED_APPS = [
     'carrito',
     'pedidos',
     'gestion',
-    'cloudinary',
-    'cloudinary_storage',
 ]
 
 # WhiteNoise va justo después de SecurityMiddleware
@@ -126,27 +124,14 @@ USE_TZ        = True
 STATIC_URL  = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# ── Cloudinary (imágenes de productos) ─────────────────────────────────────
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY':    os.getenv('CLOUDINARY_API_KEY'),
-    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
-}
+# ── Media (imágenes de productos) ──────────────────────────────────────────
+MEDIA_URL  = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
-# Django 4.2+ usa STORAGES en vez de DEFAULT_FILE_STORAGE / STATICFILES_STORAGE
-if os.getenv('CLOUDINARY_CLOUD_NAME'):
-    MEDIA_URL = f"https://res.cloudinary.com/{os.getenv('CLOUDINARY_CLOUD_NAME')}/"
-    STORAGES = {
-        'default':    {'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage'},
-        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
-    }
-else:
-    MEDIA_URL  = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
-    STORAGES = {
-        'default':    {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
-        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
-    }
+STORAGES = {
+    'default':     {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+}
 
 
 # ── Mercado Pago ────────────────────────────────────────────────────────────
