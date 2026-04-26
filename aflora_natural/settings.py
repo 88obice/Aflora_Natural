@@ -19,6 +19,7 @@ SECRET_KEY = os.environ['SECRET_KEY']  # Obligatorio — falla en arranque si fa
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS += ['healthcheck.railway.app']
 
 # Dominios de confianza para CSRF (necesario con HTTPS en producción)
 _trusted = os.getenv('CSRF_TRUSTED_ORIGINS', '')
@@ -27,9 +28,10 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in _trusted.split(',') if o.strip()]
 # Headers de seguridad (solo activos con HTTPS, ignorados en DEBUG)
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT      = True
-    SESSION_COOKIE_SECURE    = True
-    CSRF_COOKIE_SECURE       = True
+    # Railway termina SSL en el proxy — el contenedor solo recibe HTTP,
+    # así que NO redirigimos a HTTPS desde Django.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE    = True
 
 
 # ── Aplicaciones ────────────────────────────────────────────────────────────
