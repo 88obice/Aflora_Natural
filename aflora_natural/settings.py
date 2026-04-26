@@ -19,7 +19,7 @@ SECRET_KEY = os.environ['SECRET_KEY']  # Obligatorio — falla en arranque si fa
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-ALLOWED_HOSTS += ['healthcheck.railway.app']
+ALLOWED_HOSTS += ['healthcheck.railway.app', '.railway.app']
 
 # Dominios de confianza para CSRF (necesario con HTTPS en producción)
 _trusted = os.getenv('CSRF_TRUSTED_ORIGINS', '')
