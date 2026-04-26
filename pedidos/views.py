@@ -30,6 +30,9 @@ def _crear_preferencia_mp(pedido, request):
             "failure": f"{base_url}/pedidos/pago/fallido/",
             "pending": f"{base_url}/pedidos/pago/pendiente/",
         },
+        # auto_return hace que MP redirija automáticamente sin mostrar el botón
+        # "Volver al comercio". Solo aplica para pagos aprobados.
+        "auto_return": "approved",
         "external_reference": str(pedido.id),
         "statement_descriptor": "Aflora Natural",
     }
@@ -110,7 +113,9 @@ def pago_exitoso(request):
     if pedido_id:
         try:
             with transaction.atomic():
-                pedido = Pedido.objects.get(pk=pedido_id)
+                # select_for_update en el pedido evita que dos requests simultáneos
+                # (MP puede reintentar el redirect) procesen el mismo pedido dos veces.
+                pedido = Pedido.objects.select_for_update().get(pk=pedido_id)
                 if pedido.estado == 'pendiente':
                     # Descontar stock al confirmar el pago
                     for item in pedido.items.all():

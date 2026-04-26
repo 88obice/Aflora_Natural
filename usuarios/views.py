@@ -31,4 +31,6 @@ def logout_view(request):
 
 @login_required
 def perfil(request):
-    return render(request, 'usuarios/perfil.html')
+    from pedidos.models import Pedido
+    pedidos_recientes = Pedido.objects.filter(usuario=request.user).order_by('-creado')[:5]
+    return render(request, 'usuarios/perfil.html', {'pedidos_recientes': pedidos_recientes})
