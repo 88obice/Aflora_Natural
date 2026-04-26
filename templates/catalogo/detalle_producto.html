@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load aflora_filters %}
 
 {% block title %}{{ producto.nombre }} — Aflora Natural{% endblock %}
 
@@ -94,7 +95,7 @@
     <div class="col-md-6 product-info">
         <div class="product-categoria">{{ producto.categoria }}</div>
         <h1 class="product-title">{{ producto.nombre }}</h1>
-        <div class="product-price">${{ producto.precio }}</div>
+        <div class="product-price">{{ producto.precio|clp }}</div>
 
         <p class="product-desc">{{ producto.descripcion }}</p>
 

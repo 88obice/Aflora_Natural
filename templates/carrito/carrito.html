@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load aflora_filters %}
 
 {% block title %}Carrito — Aflora Natural{% endblock %}
 
@@ -59,9 +60,9 @@
                     {% for item in carrito.items.all %}
                     <tr>
                         <td class="product-name">{{ item.producto.nombre }}</td>
-                        <td class="text-muted">${{ item.producto.precio }}</td>
+                        <td class="text-muted">{{ item.producto.precio|clp }}</td>
                         <td>{{ item.cantidad }}</td>
-                        <td class="precio">${{ item.subtotal }}</td>
+                        <td class="precio">{{ item.subtotal|clp }}</td>
                         <td>
                             <a href="{% url 'carrito:eliminar' item.pk %}" class="btn-remove">Eliminar</a>
                         </td>
@@ -77,7 +78,7 @@
         <div class="cart-summary">
             <div class="d-flex justify-content-between align-items-baseline mb-3">
                 <span style="font-size:0.85rem; color:var(--text-muted);">Total del pedido</span>
-                <span class="total-row">${{ carrito.total }}</span>
+                <span class="total-row">{{ carrito.total|clp }}</span>
             </div>
             <hr style="border-color: var(--rose-light);">
             {% if user.is_authenticated %}

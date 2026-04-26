@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load aflora_filters %}
 
 {% block title %}Panel de gestión — Aflora Natural{% endblock %}
 
@@ -146,7 +147,7 @@
                         {{ pedido.get_estado_display }}
                     </span>
                 </td>
-                <td class="precio">${{ pedido.total }}</td>
+                <td class="precio">{{ pedido.total|clp }}</td>
                 <td>
                     <a href="{% url 'gestion:detalle_pedido' pedido.pk %}" class="btn btn-outline-primary btn-sm">
                         Ver

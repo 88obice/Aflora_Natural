@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     'carrito',
     'pedidos',
     'gestion',
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 # WhiteNoise va justo después de SecurityMiddleware
@@ -126,10 +128,20 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'      # donde collectstatic deposita todo
 # WhiteNoise sirve los archivos con compresión gzip y cache headers
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ── Media (imágenes de productos) ──────────────────────────────────────────
-# En producción considera migrar a S3/Cloudinary; por ahora el volumen de Railway es suficiente.
-MEDIA_URL  = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# ── Cloudinary (imágenes de productos) ─────────────────────────────────────
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY':    os.getenv('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+}
+
+# En producción usa Cloudinary; en desarrollo usa el disco local
+if os.getenv('CLOUDINARY_CLOUD_NAME'):
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    MEDIA_URL = f"https://res.cloudinary.com/{os.getenv('CLOUDINARY_CLOUD_NAME')}/"
+else:
+    MEDIA_URL  = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # ── Mercado Pago ────────────────────────────────────────────────────────────

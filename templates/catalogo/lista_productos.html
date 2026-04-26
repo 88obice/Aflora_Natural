@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load aflora_filters %}
 
 {% block title %}Catálogo — Aflora Natural{% endblock %}
 
@@ -73,7 +74,7 @@
                 <div class="card-title mb-1">{{ producto.nombre }}</div>
                 <p class="text-muted small mb-2">{{ producto.descripcion|truncatewords:12 }}</p>
                 <div class="d-flex justify-content-between align-items-center mt-auto">
-                    <span class="precio">${{ producto.precio }}</span>
+                    <span class="precio">{{ producto.precio|clp }}</span>
                     {% if producto.stock > 0 %}
                         <div class="d-flex gap-1">
                             <a href="{% url 'catalogo:detalle_producto' producto.pk %}" class="btn btn-outline-secondary btn-sm">Ver</a>

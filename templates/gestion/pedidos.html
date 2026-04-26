@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load aflora_filters %}
 
 {% block title %}Pedidos — Gestión Aflora Natural{% endblock %}
 
@@ -70,7 +71,7 @@
                 <td>{{ pedido.usuario.username }}</td>
                 <td>{{ pedido.creado|date:"d/m/Y H:i" }}</td>
                 <td><span class="estado-badge {{ pedido.estado }}">{{ pedido.get_estado_display }}</span></td>
-                <td class="precio">${{ pedido.total }}</td>
+                <td class="precio">{{ pedido.total|clp }}</td>
                 <td><a href="{% url 'gestion:detalle_pedido' pedido.pk %}" class="btn btn-outline-primary btn-sm">Ver</a></td>
             </tr>
             {% endfor %}

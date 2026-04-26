@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load aflora_filters %}
 
 {% block title %}Productos — Gestión Aflora Natural{% endblock %}
 
@@ -62,7 +63,7 @@
             <tr>
                 <td class="product-name">{{ producto.nombre }}</td>
                 <td class="text-muted">{{ producto.categoria }}</td>
-                <td class="precio">${{ producto.precio }}</td>
+                <td class="precio">{{ producto.precio|clp }}</td>
                 <td>
                     {% if producto.stock == 0 %}
                         <span class="stock-pill agotado">Agotado</span>
