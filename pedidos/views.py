@@ -4,8 +4,47 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
 from django.conf import settings
+from django.core.mail import send_mail
 from .models import Pedido, ItemPedido
 from carrito.models import Carrito, ItemCarrito
+
+
+def _enviar_confirmacion(pedido):
+    """Envía email de confirmación al cliente cuando el pago es exitoso."""
+    if not pedido.usuario.email:
+        return
+    try:
+        items_texto = '\n'.join(
+            f"  - {item.producto.nombre} x{item.cantidad}: ${int(item.precio_unitario * item.cantidad):,}".replace(',', '.')
+            for item in pedido.items.all()
+        )
+        mensaje = f"""Hola {pedido.usuario.username},
+
+¡Tu pedido #{pedido.pk} ha sido confirmado! 🌿
+
+{items_texto}
+
+Total: ${int(pedido.total):,}
+
+Dirección de entrega: {pedido.direccion_entrega}
+Teléfono: {pedido.telefono}
+
+Nos contactaremos contigo pronto para coordinar la entrega.
+
+Si tienes dudas, escríbenos por WhatsApp: +56 9 8956 0937
+
+— Aflora Natural
+""".replace(',', '.')
+
+        send_mail(
+            subject=f'Pedido #{pedido.pk} confirmado — Aflora Natural',
+            message=mensaje,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[pedido.usuario.email],
+            fail_silently=True,  # no rompe el flujo si el email falla
+        )
+    except Exception:
+        pass
 
 
 def _crear_preferencia_mp(pedido, request):
@@ -135,6 +174,7 @@ def pago_exitoso(request):
                         producto.save()
                     pedido.estado = 'confirmado'
                     pedido.save()
+                    _enviar_confirmacion(pedido)
             if request.user.is_authenticated and pedido.usuario == request.user:
                 messages.success(request, '¡Pago recibido! Tu pedido está confirmado.')
                 return redirect('pedidos:detalle_pedido', pk=pedido.pk)
