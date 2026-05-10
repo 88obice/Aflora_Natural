@@ -61,6 +61,18 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Generados por Django (no deben estar en git):
+# - media/ son uploads de usuario; en producción los maneja Cloudinary
+# - staticfiles/ se regenera en cada deploy con collectstatic
+media/
+staticfiles/
+
+# Backups y temporales del editor:
+*.bak
+*.swp
+*.tmp
+.vscode/
+
 # Flask stuff:
 instance/
 .webassets-cache
