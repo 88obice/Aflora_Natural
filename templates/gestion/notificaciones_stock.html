@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Notificaciones de stock pendientes</h2>
+<p class="text-muted small">Clientes que pidieron aviso cuando un producto vuelva.</p>
+<table class="table">
+<thead><tr><th>Producto</th><th>Email</th><th>Solicitado</th></tr></thead>
+<tbody>
+{% for n in notificaciones %}
+<tr><td>{{ n.producto.nombre }}</td><td>{{ n.email }}</td><td class="text-muted small">{{ n.creado|date:"d M Y" }}</td></tr>
+{% empty %}
+<tr><td colspan="3" class="text-muted fst-italic">Ninguna pendiente.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<small class="text-muted">Cuando repongas stock, considera enviar manualmente un email a estos clientes (o usa el comando <code>python manage.py notificar_stock</code> que se puede crear).</small>
+{% endblock %}

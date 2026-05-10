@@ -1,40 +1,30 @@
 {% extends 'base.html' %}
+{% load aflora_filters %}
 
-{% block title %}Pedido #{{ pedido.id }} — Gestión Aflora Natural{% endblock %}
+{% block title %}Pedido #{{ pedido.pk }} — Gestión{% endblock %}
 
 {% block extra_css %}
 <style>
-    .gestion-nav {
-        background: #fff; border: 1px solid var(--rose-light); border-radius: 4px;
-        padding: 0.8rem 1.2rem; margin-bottom: 2rem;
-        display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;
-    }
-    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; letter-spacing:0.04em; padding-bottom:2px; border-bottom:2px solid transparent; transition: color 0.2s, border-color 0.2s; }
-    .gestion-nav a:hover, .gestion-nav a.active { color:var(--terracotta); border-bottom-color:var(--terracotta); }
+    .gestion-nav { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:0.8rem 1.2rem; margin-bottom:2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
+    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; }
+    .gestion-nav a:hover { color:var(--terracotta); }
     .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
 
-    .info-panel, .items-panel, .status-panel {
-        background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1.8rem;
-    }
-    .info-panel .label { font-size:0.75rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.15rem; }
-    .info-panel .value { font-size:0.92rem; margin-bottom:1rem; }
-    .section-label { font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:1.2rem; }
-    .items-table td { font-size:0.88rem; border-color:var(--rose-light); }
-    .items-total { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--terracotta); }
+    .info-card { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1.4rem; margin-bottom:1rem; }
+    .info-card h6 { font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); font-weight:400; margin-bottom:0.7rem; }
+    .info-row { display:flex; justify-content:space-between; padding:0.3rem 0; font-size:0.9rem; }
+    .info-row .label { color:var(--text-muted); }
 
-    .estado-badge { display:inline-block; padding:0.3em 0.9em; border-radius:2px; font-size:0.8rem; letter-spacing:0.06em; background-color:var(--rose-light); color:var(--terracotta); }
-    .estado-badge.enviado   { background-color:#d4edda; color:#155724; }
-    .estado-badge.entregado { background-color:#cce5ff; color:#004085; }
-    .estado-badge.cancelado { background-color:#f8d7da; color:#721c24; }
+    .estado-pill { display:inline-block; padding:0.2em 0.85em; border-radius:20px; font-size:0.78rem; }
+    .estado-pendiente   { background:#fff3cd; color:#856404; }
+    .estado-confirmado  { background:#d1ecf1; color:#0c5460; }
+    .estado-preparando  { background:#fcefdc; color:#856404; }
+    .estado-enviado     { background:#cce5ff; color:#004085; }
+    .estado-entregado   { background:#d4edda; color:#155724; }
+    .estado-cancelado   { background:#f8d7da; color:#721c24; }
 
-    .form-select { border-color:var(--rose-light); border-radius:2px; font-size:0.9rem; }
-    .form-select:focus { border-color:var(--terracotta); box-shadow:0 0 0 0.15rem rgba(139,94,60,0.15); }
-
-    .whatsapp-btn {
-        background-color:#25D366; border-color:#25D366; color:#fff;
-        font-size:0.82rem; border-radius:2px;
-    }
-    .whatsapp-btn:hover { background-color:#1da851; border-color:#1da851; color:#fff; }
+    .items-table th { font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); font-weight:400; border-color:var(--rose-light); }
+    .items-table td { border-color:var(--rose-light); vertical-align:middle; font-size:0.88rem; }
 </style>
 {% endblock %}
 
@@ -43,88 +33,110 @@
 <div class="gestion-nav">
     <span class="nav-title">Gestión</span>
     <a href="{% url 'gestion:dashboard' %}">Dashboard</a>
-    <a href="{% url 'gestion:pedidos' %}" class="active">Pedidos</a>
+    <a href="{% url 'gestion:pedidos' %}">Pedidos</a>
     <a href="{% url 'gestion:productos' %}">Productos</a>
-    <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
+    <a href="{% url 'gestion:categorias_lista' %}">Categorías</a>
+    <a href="{% url 'gestion:resenas_lista' %}">Reseñas</a>
+    <a href="{% url 'gestion:newsletter_lista' %}">Newsletter</a>
+    <a href="{% url 'gestion:notificaciones_stock' %}">Notif. stock</a>
 </div>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Pedido <span style="color:var(--terracotta);">#{{ pedido.id }}</span></h2>
-    <a href="{% url 'gestion:pedidos' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+    <div>
+        <h2 class="mb-1">Pedido #{{ pedido.pk }}</h2>
+        <small class="text-muted">{{ pedido.creado|date:"d M Y H:i" }} · <span class="estado-pill estado-{{ pedido.estado }}">{{ pedido.get_estado_display }}</span></small>
+    </div>
+    <a href="{% url 'gestion:pedidos' %}" class="btn btn-outline-secondary btn-sm">← Volver a pedidos</a>
 </div>
 
-<div class="row g-4">
-
-    <!-- Info del cliente -->
-    <div class="col-md-4">
-        <div class="info-panel">
-            <div class="section-label">Cliente</div>
-            <div class="label">Usuario</div>
-            <div class="value">{{ pedido.usuario.username }}</div>
-            <div class="label">Email</div>
-            <div class="value">{{ pedido.usuario.email|default:"—" }}</div>
-            <div class="label">Teléfono</div>
-            <div class="value">{{ pedido.telefono }}</div>
-            <div class="label">Dirección</div>
-            <div class="value">{{ pedido.direccion_entrega }}</div>
-            <div class="label">Fecha del pedido</div>
-            <div class="value">{{ pedido.creado|date:"d/m/Y H:i" }}</div>
-
-            <!-- Botón WhatsApp al cliente -->
-            <a href="https://wa.me/{{ pedido.telefono|cut:' '|cut:'+'|cut:'-' }}?text=Hola%20{{ pedido.usuario.username }}!%20Te%20escribimos%20de%20Aflora%20Natural%20sobre%20tu%20pedido%20%23{{ pedido.id }}."
-               target="_blank"
-               class="btn whatsapp-btn btn-sm w-100 mt-2">
-                Contactar por WhatsApp
-            </a>
-        </div>
-    </div>
-
-    <!-- Productos del pedido -->
-    <div class="col-md-5">
-        <div class="items-panel">
-            <div class="section-label">Productos</div>
+<div class="row">
+    <div class="col-md-8">
+        <div class="info-card">
+            <h6>Productos</h6>
             <table class="table items-table mb-0">
-                {% for item in pedido.items.all %}
+                <thead><tr><th>Producto</th><th class="text-end">Cant.</th><th class="text-end">Precio</th><th class="text-end">Subtotal</th></tr></thead>
+                <tbody>
+                {% for it in pedido.items.all %}
                 <tr>
-                    <td>{{ item.producto.nombre }}</td>
-                    <td class="text-muted">×{{ item.cantidad }}</td>
-                    <td class="text-end">${{ item.subtotal }}</td>
+                    <td>{{ it.nombre_mostrar }}</td>
+                    <td class="text-end">{{ it.cantidad }}</td>
+                    <td class="text-end text-muted">{{ it.precio_unitario|clp }}</td>
+                    <td class="text-end precio">{{ it.subtotal|clp }}</td>
                 </tr>
                 {% endfor %}
-                <tr style="border-top:2px solid var(--rose-light);">
-                    <td colspan="2" class="text-end fw-bold" style="border-bottom:0;">Total</td>
-                    <td class="text-end items-total" style="border-bottom:0;">${{ pedido.total }}</td>
-                </tr>
+                </tbody>
+                <tfoot>
+                    <tr><td colspan="3" class="text-end text-muted">Subtotal</td><td class="text-end">{{ pedido.subtotal|clp }}</td></tr>
+                    <tr><td colspan="3" class="text-end text-muted">Envío</td><td class="text-end">{% if pedido.costo_envio %}{{ pedido.costo_envio|clp }}{% else %}<span class="text-muted">Gratis</span>{% endif %}</td></tr>
+                    <tr><td colspan="3" class="text-end"><strong>Total</strong></td><td class="text-end precio"><strong>{{ pedido.total|clp }}</strong></td></tr>
+                </tfoot>
             </table>
         </div>
-    </div>
 
-    <!-- Cambio de estado -->
-    <div class="col-md-3">
-        <div class="status-panel">
-            <div class="section-label">Estado</div>
-            <div class="mb-3">
-                <span class="estado-badge {{ pedido.estado }}">{{ pedido.get_estado_display }}</span>
-            </div>
-            <form method="post">
+        <div class="info-card">
+            <h6>Actualizar estado</h6>
+            <form method="post" class="d-flex flex-wrap gap-2 align-items-end">
                 {% csrf_token %}
-                <div class="mb-3">
-                    <label class="form-label" style="font-size:0.8rem; color:var(--text-muted);">Cambiar a</label>
-                    <select name="estado" class="form-select">
-                        {% for valor, etiqueta in pedido.ESTADO_CHOICES %}
-                            <option value="{{ valor }}" {% if pedido.estado == valor %}selected{% endif %}>
-                                {{ etiqueta }}
-                            </option>
+                <div>
+                    <label class="form-label small text-muted">Estado</label>
+                    <select name="estado" class="form-select form-select-sm" style="border-color:var(--rose-light);">
+                        {% for valor, label in pedido.ESTADO_CHOICES %}
+                            <option value="{{ valor }}" {% if pedido.estado == valor %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary w-100" style="font-size:0.85rem;">
-                    Actualizar estado
-                </button>
+                <div class="flex-grow-1">
+                    <label class="form-label small text-muted">Código de seguimiento (courier)</label>
+                    <input type="text" name="codigo_seguimiento" value="{{ pedido.codigo_seguimiento }}" class="form-control form-control-sm" maxlength="80" placeholder="Ej: CL123456789">
+                </div>
+                <button class="btn btn-primary btn-sm">Guardar</button>
             </form>
+            {% if pedido.codigo_seguimiento %}
+                <small class="text-muted d-block mt-2">El cliente puede ver este código en su detalle de pedido.</small>
+            {% endif %}
         </div>
+
+        {% if pedido.nota_cliente %}
+        <div class="info-card">
+            <h6>Comentario del cliente</h6>
+            <p class="small mb-0" style="font-style:italic; color:var(--text);">{{ pedido.nota_cliente }}</p>
+        </div>
+        {% endif %}
     </div>
 
+    <div class="col-md-4">
+        <div class="info-card">
+            <h6>Cliente</h6>
+            <div><strong>{{ pedido.nombre_destinatario }}</strong>{% if pedido.es_invitado %} <small class="text-muted">(invitado)</small>{% endif %}</div>
+            {% if pedido.email_destinatario %}<div class="small text-muted">{{ pedido.email_destinatario }}</div>{% endif %}
+            <div class="small text-muted">Tel: {{ pedido.telefono }}</div>
+            {% if pedido.email_destinatario %}
+            <a href="mailto:{{ pedido.email_destinatario }}" class="btn btn-outline-secondary btn-sm mt-2">Enviar email</a>
+            {% endif %}
+            <a href="https://wa.me/{{ pedido.telefono|cut:' '|cut:'+' }}" target="_blank" class="btn btn-outline-secondary btn-sm mt-2">WhatsApp</a>
+        </div>
+
+        <div class="info-card">
+            <h6>Entrega</h6>
+            <div class="info-row"><span class="label">Método</span><span>{{ pedido.get_metodo_envio_display }}</span></div>
+            {% if pedido.metodo_envio == 'envio_domicilio' %}
+                <div class="info-row"><span class="label">Comuna</span><span>{{ pedido.comuna|default:"—" }}</span></div>
+                <div class="info-row"><span class="label">Región</span><span>{{ pedido.region|default:"—" }}</span></div>
+                <div class="mt-2 small">{{ pedido.direccion_formateada }}</div>
+                {% if pedido.referencia %}<div class="small text-muted mt-1">Ref: {{ pedido.referencia }}</div>{% endif %}
+            {% endif %}
+        </div>
+
+        <div class="info-card">
+            <h6>Pago Mercado Pago</h6>
+            {% if pedido.mp_payment_id %}
+                <div class="info-row"><span class="label">Payment ID</span><span class="small">{{ pedido.mp_payment_id }}</span></div>
+                <div class="info-row"><span class="label">Status MP</span><span class="small">{{ pedido.mp_status }}</span></div>
+            {% else %}
+                <small class="text-muted">Sin info de pago aún.</small>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 {% endblock %}

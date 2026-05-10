@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card p-4 mt-3" style="background:#fff; border-color:var(--rose-light); max-width:480px; margin:auto;">
+    <h4>¿Eliminar "{{ producto.nombre }}"?</h4>
+    <p class="text-muted small">Esta acción no se puede deshacer. Los pedidos existentes con este producto quedarán intactos (snapshot).</p>
+    <form method="post" class="d-flex gap-2">
+        {% csrf_token %}
+        <button class="btn btn-danger">Sí, eliminar</button>
+        <a href="{% url 'gestion:productos' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

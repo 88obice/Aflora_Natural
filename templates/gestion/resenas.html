@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Reseñas — Gestión{% endblock %}
+{% block extra_css %}
+<style>
+    .gestion-nav { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:0.8rem 1.2rem; margin-bottom:2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
+    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; padding-bottom:2px; border-bottom:2px solid transparent; }
+    .gestion-nav a:hover, .gestion-nav a.active { color:var(--terracotta); border-bottom-color:var(--terracotta); }
+    .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
+    .filter-pills { display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1rem; }
+    .filter-pills a { font-size:0.78rem; padding:0.3rem 0.85rem; border:1px solid var(--rose-light); border-radius:20px; color:var(--text-muted); text-decoration:none; }
+    .filter-pills a.active { background:var(--terracotta); color:#fff; border-color:var(--terracotta); }
+    .resena-card { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1.1rem 1.3rem; margin-bottom:0.8rem; }
+    .resena-card.pendiente { border-left:3px solid #c0392b; }
+    .resena-card.aprobada { border-left:3px solid #27ae60; }
+    .stars { color:var(--amber); font-size:0.95rem; }
+    .meta { font-size:0.78rem; color:var(--text-muted); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="gestion-nav">
+    <span class="nav-title">Gestión</span>
+    <a href="{% url 'gestion:dashboard' %}">Dashboard</a>
+    <a href="{% url 'gestion:pedidos' %}">Pedidos</a>
+    <a href="{% url 'gestion:productos' %}">Productos</a>
+    <a href="{% url 'gestion:categorias_lista' %}">Categorías</a>
+    <a href="{% url 'gestion:resenas_lista' %}" class="active">Reseñas{% if total_pendientes %} <span style="background:#c0392b;color:#fff;border-radius:50%;padding:0.05em 0.5em;font-size:0.7rem;">{{ total_pendientes }}</span>{% endif %}</a>
+    <a href="{% url 'gestion:newsletter_lista' %}">Newsletter</a>
+    <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
+</div>
+
+<h2 class="mb-3">Reseñas</h2>
+
+<div class="filter-pills">
+    <a href="?" class="{% if not estado_actual %}active{% endif %}">Todas</a>
+    <a href="?estado=pendientes" class="{% if estado_actual == 'pendientes' %}active{% endif %}">Pendientes / ocultas</a>
+    <a href="?estado=aprobadas" class="{% if estado_actual == 'aprobadas' %}active{% endif %}">Aprobadas</a>
+    <span style="margin:0 0.5rem; color:var(--text-muted);">·</span>
+    {% for n in "12345" %}
+        <a href="?rating={{ n }}{% if estado_actual %}&estado={{ estado_actual }}{% endif %}" class="{% if rating_actual == n %}active{% endif %}">{{ n }}★</a>
+    {% endfor %}
+</div>
+
+{% for r in resenas %}
+<div class="resena-card {% if r.aprobada %}aprobada{% else %}pendiente{% endif %}">
+    <div class="d-flex justify-content-between align-items-start">
+        <div class="flex-grow-1">
+            <div class="stars">{% for i in "12345" %}{% if forloop.counter <= r.rating %}★{% else %}☆{% endif %}{% endfor %}
+                {% if r.titulo %}<strong style="margin-left:0.5rem;">{{ r.titulo }}</strong>{% endif %}
+            </div>
+            <div class="meta">
+                <a href="{{ r.producto.get_absolute_url }}" target="_blank" style="color:var(--terracotta); text-decoration:none;">{{ r.producto.nombre }}</a>
+                · {{ r.usuario.username }}
+                · {{ r.creado|date:"d M Y H:i" }}
+                · {% if r.aprobada %}<span class="text-success">visible en sitio</span>{% else %}<span class="text-danger">oculta</span>{% endif %}
+            </div>
+            <p class="mt-2 mb-0" style="font-size:0.92rem;">{{ r.comentario|linebreaksbr }}</p>
+        </div>
+        <div class="d-flex flex-column gap-1 ms-3" style="min-width:130px;">
+            <form method="post" action="{% url 'gestion:resena_toggle_aprobar' r.pk %}">
+                {% csrf_token %}
+                <button class="btn btn-outline-{% if r.aprobada %}secondary{% else %}primary{% endif %} btn-sm w-100">
+                    {% if r.aprobada %}Ocultar{% else %}Aprobar{% endif %}
+                </button>
+            </form>
+            <form method="post" action="{% url 'gestion:resena_eliminar' r.pk %}" onsubmit="return confirm('¿Eliminar definitivamente esta reseña?');">
+                {% csrf_token %}
+                <button class="btn btn-outline-secondary btn-sm w-100">Eliminar</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% empty %}
+<p class="text-muted fst-italic text-center py-4">Sin reseñas con este filtro.</p>
+{% endfor %}
+{% endblock %}

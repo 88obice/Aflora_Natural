@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% load aflora_filters %}
+{% block title %}Newsletter — Gestión{% endblock %}
+{% block extra_css %}
+<style>
+    .gestion-nav { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:0.8rem 1.2rem; margin-bottom:2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
+    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; padding-bottom:2px; border-bottom:2px solid transparent; }
+    .gestion-nav a:hover, .gestion-nav a.active { color:var(--terracotta); border-bottom-color:var(--terracotta); }
+    .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
+    .estado-pill { display:inline-block; padding:0.18em 0.7em; border-radius:20px; font-size:0.72rem; }
+    .estado-borrador { background:#e2e3e5; color:#383d41; }
+    .estado-enviando { background:#fff3cd; color:#856404; }
+    .estado-enviada  { background:#d4edda; color:#155724; }
+    .estado-error    { background:#f8d7da; color:#721c24; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="gestion-nav">
+    <span class="nav-title">Gestión</span>
+    <a href="{% url 'gestion:dashboard' %}">Dashboard</a>
+    <a href="{% url 'gestion:pedidos' %}">Pedidos</a>
+    <a href="{% url 'gestion:productos' %}">Productos</a>
+    <a href="{% url 'gestion:categorias_lista' %}">Categorías</a>
+    <a href="{% url 'gestion:resenas_lista' %}">Reseñas</a>
+    <a href="{% url 'gestion:newsletter_lista' %}" class="active">Newsletter</a>
+    <a href="{% url 'gestion:notificaciones_stock' %}">Notif. stock</a>
+    <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Newsletter</h2>
+        <small class="text-muted">{{ total_suscriptores }} suscriptor{{ total_suscriptores|pluralize:'es' }} activo{{ total_suscriptores|pluralize }}</small>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'gestion:newsletter_suscriptores' %}" class="btn btn-outline-secondary btn-sm">Ver suscriptores</a>
+        <a href="{% url 'gestion:newsletter_crear' %}" class="btn btn-primary btn-sm">+ Nueva campaña</a>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table" style="background:#fff; border:1px solid var(--rose-light);">
+        <thead>
+            <tr style="font-size:0.75rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted);">
+                <th>#</th><th>Asunto</th><th>Estado</th><th>Enviada</th><th>Estadísticas</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for c in campanas %}
+        <tr style="font-size:0.9rem;">
+            <td>{{ c.pk }}</td>
+            <td><a href="{% url 'gestion:newsletter_detalle' c.pk %}" style="color:var(--terracotta); text-decoration:none;">{{ c.asunto|truncatechars:60 }}</a></td>
+            <td><span class="estado-pill estado-{{ c.estado }}">{{ c.get_estado_display }}</span></td>
+            <td class="text-muted small">{% if c.enviada_en %}{{ c.enviada_en|date:"d M Y H:i" }}{% else %}—{% endif %}</td>
+            <td class="text-muted small">
+                {% if c.estado == 'enviada' or c.estado == 'error' %}
+                    {{ c.total_enviados }}/{{ c.total_destinatarios }} enviados
+                    {% if c.total_fallidos %}· {{ c.total_fallidos }} fallidos{% endif %}
+                {% else %}—{% endif %}
+            </td>
+            <td><a href="{% url 'gestion:newsletter_detalle' c.pk %}" class="btn btn-outline-secondary btn-sm">Ver</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-muted fst-italic text-center py-4">Aún no creas campañas. <a href="{% url 'gestion:newsletter_crear' %}">Crear la primera</a>.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
