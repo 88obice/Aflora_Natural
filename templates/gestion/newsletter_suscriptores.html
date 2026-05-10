@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Suscriptores newsletter — Gestión{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Suscriptores del newsletter</h2>
+    <a href="{% url 'gestion:newsletter_lista' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+</div>
+<div class="table-responsive">
+    <table class="table" style="background:#fff; border:1px solid var(--rose-light);">
+        <thead>
+            <tr style="font-size:0.75rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted);">
+                <th>Email</th><th>Activo</th><th>Suscrito</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for s in suscriptores %}
+        <tr style="font-size:0.9rem;">
+            <td>{{ s.email }}</td>
+            <td>{% if s.activo %}<span class="text-success">✓ Sí</span>{% else %}<span class="text-muted">✗ Dado de baja</span>{% endif %}</td>
+            <td class="text-muted small">{{ s.creado|date:"d M Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" class="text-muted fst-italic text-center py-4">Aún no hay suscriptores.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

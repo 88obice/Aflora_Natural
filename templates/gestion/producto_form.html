@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block title %}{% if modo == 'crear' %}Nuevo producto{% else %}Editar producto{% endif %}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>{% if modo == 'crear' %}Nuevo producto{% else %}Editar: {{ producto.nombre }}{% endif %}</h2>
+    <a href="{% url 'gestion:productos' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    {# ── Datos principales ── #}
+    <div class="card p-4 mb-4" style="background:#fff; border-color:var(--rose-light);">
+        <h5 class="mb-3" style="color:var(--terracotta);">Datos del producto</h5>
+        <div class="row g-3">
+            <div class="col-md-8"><label class="form-label">Nombre</label>{{ form.nombre }}</div>
+            <div class="col-md-4"><label class="form-label">SKU</label>{{ form.sku }}</div>
+            <div class="col-md-6"><label class="form-label">Categoría</label>{{ form.categoria }}</div>
+            <div class="col-md-3"><label class="form-label">Precio base ($)</label>{{ form.precio }}</div>
+            <div class="col-md-3"><label class="form-label">Stock base</label>{{ form.stock }}
+                <small class="text-muted d-block">Si usas variantes, este campo se ignora.</small>
+            </div>
+            <div class="col-12"><label class="form-label">Descripción corta <small class="text-muted">(listado y SEO, máx 200 caracteres)</small></label>{{ form.descripcion_corta }}</div>
+            <div class="col-12"><label class="form-label">Descripción completa</label>{{ form.descripcion }}</div>
+            <div class="col-md-6">
+                <label class="form-label">Imagen principal</label>{{ form.imagen }}
+                {% if producto.imagen %}<small class="d-block mt-1 text-muted">Actual: <a href="{{ producto.imagen.url }}" target="_blank">ver imagen</a></small>{% endif %}
+            </div>
+            <div class="col-md-3 d-flex align-items-end pb-2">
+                <div class="form-check">{{ form.disponible }}<label class="form-check-label ms-2">Visible en tienda</label></div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end pb-2">
+                <div class="form-check">{{ form.destacado }}<label class="form-check-label ms-2">Destacado en home</label></div>
+            </div>
+        </div>
+        {% if form.errors %}<div class="alert alert-danger small mt-3">{{ form.errors }}</div>{% endif %}
+    </div>
+
+    {# ── Galería de imágenes ── #}
+    <div class="card p-4 mb-4" style="background:#fff; border-color:var(--rose-light);">
+        <h5 class="mb-1" style="color:var(--terracotta);">Galería de imágenes</h5>
+        <p class="text-muted small mb-3">Las imágenes de galería se muestran en el detalle del producto. Puedes subir hasta 10. Orden 0 = aparece primero.</p>
+        {{ imagen_formset.management_form }}
+        {% for f in imagen_formset %}
+        <div class="border rounded p-3 mb-2 imagen-row" style="background:#faf6f1;">
+            {{ f.id }}
+            <div class="row g-2 align-items-center">
+                {% if f.instance.pk and f.instance.imagen %}
+                <div class="col-auto">
+                    <img src="{{ f.instance.imagen.url }}" alt="{{ f.instance.alt }}" style="max-height:60px; max-width:80px; object-fit:cover; border-radius:4px;">
+                </div>
+                {% endif %}
+                <div class="col">
+                    <label class="form-label form-label-sm mb-1">Imagen</label>
+                    {{ f.imagen }}
+                    {% if f.imagen.errors %}<div class="text-danger small">{{ f.imagen.errors }}</div>{% endif %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label form-label-sm mb-1">Texto alternativo</label>
+                    {{ f.alt }}
+                </div>
+                <div class="col-auto">
+                    <label class="form-label form-label-sm mb-1">Orden</label>
+                    {{ f.orden }}
+                </div>
+                {% if f.instance.pk %}
+                <div class="col-auto d-flex align-items-end pb-1">
+                    <div class="form-check">
+                        {{ f.DELETE }}
+                        <label class="form-check-label text-danger small ms-1">Borrar</label>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% if imagen_formset.non_form_errors %}
+        <div class="alert alert-danger small">{{ imagen_formset.non_form_errors }}</div>
+        {% endif %}
+    </div>
+
+    {# ── Variantes ── #}
+    <div class="card p-4 mb-4" style="background:#fff; border-color:var(--rose-light);">
+        <h5 class="mb-1" style="color:var(--terracotta);">Variantes</h5>
+        <p class="text-muted small mb-3">Úsalas cuando el producto viene en distintos tamaños o aromas (ej: 100g, 200g, Lavanda). Cada variante tiene su propio precio y stock. Si no usas variantes, deja esto vacío y usa los campos de precio y stock de arriba.</p>
+        {{ variante_formset.management_form }}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre <small class="text-muted fw-normal">(ej: 200g)</small></th>
+                        <th>SKU</th>
+                        <th>Precio ($)</th>
+                        <th>Stock</th>
+                        <th style="width:60px">Orden</th>
+                        <th style="width:60px">Activa</th>
+                        <th style="width:60px">Borrar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in variante_formset %}
+                    <tr class="variante-row">
+                        {{ f.id }}
+                        <td>{{ f.nombre }}{% if f.nombre.errors %}<div class="text-danger small">{{ f.nombre.errors }}</div>{% endif %}</td>
+                        <td>{{ f.sku }}</td>
+                        <td>{{ f.precio }}{% if f.precio.errors %}<div class="text-danger small">{{ f.precio.errors }}</div>{% endif %}</td>
+                        <td>{{ f.stock }}</td>
+                        <td>{{ f.orden }}</td>
+                        <td class="text-center">{{ f.activa }}</td>
+                        <td class="text-center">
+                            {% if f.instance.pk %}{{ f.DELETE }}{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if variante_formset.non_form_errors %}
+        <div class="alert alert-danger small mt-2">{{ variante_formset.non_form_errors }}</div>
+        {% endif %}
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary px-4">Guardar producto</button>
+        <a href="{% url 'gestion:productos' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

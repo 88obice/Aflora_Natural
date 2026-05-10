@@ -2,6 +2,7 @@
 {% load aflora_filters %}
 
 {% block title %}{{ producto.nombre }} — Aflora Natural{% endblock %}
+{% block meta_description %}{% if producto.descripcion_corta %}{{ producto.descripcion_corta }}{% else %}{{ producto.descripcion|truncatewords:25 }}{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -9,112 +10,154 @@
     .breadcrumb-item a { color: var(--terracotta); text-decoration: none; }
     .breadcrumb-item.active { color: var(--text-muted); }
 
-    .product-image-wrap {
-        border-radius: 4px;
-        overflow: hidden;
-        border: 1px solid var(--rose-light);
-    }
-    .product-image-wrap img { width: 100%; height: 420px; object-fit: cover; }
-    .product-image-placeholder {
-        height: 420px;
-        background: linear-gradient(135deg, #F0E8DE 0%, #EDD9D1 100%);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 4rem; color: var(--rose);
-    }
+    .gallery-main { border-radius: 4px; overflow: hidden; border: 1px solid var(--rose-light); margin-bottom:0.7rem; }
+    .gallery-main img { width:100%; height:420px; object-fit: cover; display:block; }
+    .gallery-main .placeholder-img { height:420px; background: linear-gradient(135deg, #F0E8DE 0%, #EDD9D1 100%); display:flex; align-items:center; justify-content:center; font-size:4rem; color: var(--rose); }
+    .gallery-thumbs { display:flex; gap:0.4rem; flex-wrap:wrap; }
+    .gallery-thumbs img { width:64px; height:64px; object-fit:cover; border:1px solid var(--rose-light); border-radius:3px; cursor:pointer; opacity:0.75; transition:opacity 0.15s, border-color 0.15s; }
+    .gallery-thumbs img:hover, .gallery-thumbs img.active { opacity:1; border-color: var(--terracotta); }
 
     .product-info { padding-left: 2rem; }
-    .product-categoria {
-        font-size: 0.78rem;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        margin-bottom: 0.5rem;
-    }
-    .product-title {
-        font-size: 2rem;
-        margin-bottom: 0.8rem;
-        line-height: 1.2;
-    }
-    .product-price {
-        font-family: 'Playfair Display', serif;
-        font-size: 1.8rem;
-        color: var(--terracotta);
-        margin-bottom: 1.2rem;
-    }
-    .product-desc {
-        color: var(--text-muted);
-        font-size: 0.95rem;
-        line-height: 1.7;
-        margin-bottom: 1.5rem;
-        border-top: 1px solid var(--rose-light);
-        padding-top: 1.2rem;
-    }
-    .stock-badge {
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        margin-bottom: 1.5rem;
-    }
+    .product-categoria { font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .product-title { font-size: 2rem; margin-bottom: 0.6rem; line-height: 1.2; }
+    .product-rating { color: var(--amber); font-size:0.95rem; margin-bottom:0.8rem; }
+    .product-price { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--terracotta); margin-bottom: 1.2rem; }
+    .product-desc { color: var(--text-muted); font-size: 0.95rem; line-height: 1.7; margin-bottom: 1.5rem; border-top: 1px solid var(--rose-light); padding-top: 1.2rem; }
+    .stock-badge { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.5rem; }
     .stock-badge.disponible { color: #5a8a5a; }
-    .btn-agregar {
-        padding: 0.75rem 2.2rem;
-        font-size: 0.9rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-    }
+    .btn-agregar { padding: 0.75rem 2.2rem; font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase; }
 
-    @media (max-width: 768px) {
-        .product-info { padding-left: 0; margin-top: 1.5rem; }
+    .variantes { display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+    .variantes .variante-btn {
+        padding:0.5rem 1rem; border:1px solid var(--rose-light); border-radius:3px;
+        background:#fff; cursor:pointer; font-size:0.85rem; color: var(--text);
+        transition: border-color 0.15s, background-color 0.15s;
     }
+    .variantes .variante-btn:hover { border-color: var(--terracotta); }
+    .variantes .variante-btn.selected { background-color: var(--terracotta); border-color: var(--terracotta); color:#fff; }
+    .variantes .variante-btn:disabled { opacity:0.4; cursor:not-allowed; text-decoration: line-through; }
+
+    .reviews-section { margin-top: 4rem; padding-top:2.5rem; border-top: 1px solid var(--rose-light); }
+    .review-card { padding:1.2rem 0; border-bottom: 1px solid var(--cream-dark); }
+    .review-card:last-child { border-bottom: none; }
+    .review-rating { color: var(--amber); font-size: 0.9rem; }
+    .review-meta { font-size: 0.78rem; color: var(--text-muted); }
+
+    .related-section { margin-top: 4rem; padding-top:2.5rem; border-top:1px solid var(--rose-light); }
+    .related-section .product-card .card-img-top { height:180px; object-fit:cover; }
+    .related-section .product-card .placeholder-img { height:180px; background: linear-gradient(135deg, #F0E8DE 0%, #EDD9D1 100%); display:flex; align-items:center; justify-content:center; color: var(--rose); font-size:2rem; }
+
+    .wishlist-btn {
+        background:none; border:1px solid var(--rose-light); border-radius:50%;
+        width:42px; height:42px; cursor:pointer; font-size:1.1rem; color: var(--text-muted);
+        display:inline-flex; align-items:center; justify-content:center;
+        transition: color 0.15s, border-color 0.15s;
+    }
+    .wishlist-btn.active { color: #c0392b; border-color: #c0392b; }
+
+    @media (max-width: 768px) { .product-info { padding-left: 0; margin-top: 1.5rem; } }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Breadcrumb -->
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'catalogo:inicio' %}">Inicio</a></li>
         <li class="breadcrumb-item"><a href="{% url 'catalogo:lista_productos' %}">Catálogo</a></li>
+        <li class="breadcrumb-item"><a href="?categoria={{ producto.categoria.slug }}">{{ producto.categoria }}</a></li>
         <li class="breadcrumb-item active">{{ producto.nombre }}</li>
     </ol>
 </nav>
 
 <div class="row">
-    <!-- Imagen -->
+    <!-- Galería -->
     <div class="col-md-6">
-        <div class="product-image-wrap">
+        <div class="gallery-main" id="galleryMain">
             {% if producto.imagen %}
-                <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}">
+                <img id="galleryMainImg" src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}">
+            {% elif imagenes_galeria %}
+                <img id="galleryMainImg" src="{{ imagenes_galeria.0.imagen.url }}" alt="{{ producto.nombre }}">
             {% else %}
-                <div class="product-image-placeholder">🌿</div>
+                <div class="placeholder-img">🌿</div>
             {% endif %}
         </div>
+        {% if producto.imagen or imagenes_galeria %}
+        <div class="gallery-thumbs">
+            {% if producto.imagen %}
+                <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="gallery-thumb active" data-full="{{ producto.imagen.url }}">
+            {% endif %}
+            {% for img in imagenes_galeria %}
+                <img src="{{ img.imagen.url }}" alt="{{ img.alt|default:producto.nombre }}" class="gallery-thumb" data-full="{{ img.imagen.url }}">
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 
     <!-- Info -->
     <div class="col-md-6 product-info">
-        <div class="product-categoria">{{ producto.categoria }}</div>
-        <h1 class="product-title">{{ producto.nombre }}</h1>
-        <div class="product-price">{{ producto.precio|clp }}</div>
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+                <div class="product-categoria">{{ producto.categoria }}</div>
+                <h1 class="product-title">{{ producto.nombre }}</h1>
+            </div>
+            {% if user.is_authenticated %}
+            <form method="post" action="{% url 'catalogo:toggle_wishlist' producto.pk %}" id="wishlistForm">
+                {% csrf_token %}
+                <button type="submit" class="wishlist-btn {% if en_wishlist %}active{% endif %}" title="Favoritos">
+                    {% if en_wishlist %}♥{% else %}♡{% endif %}
+                </button>
+            </form>
+            {% endif %}
+        </div>
 
-        <p class="product-desc">{{ producto.descripcion }}</p>
+        {% if rating_promedio %}
+        <div class="product-rating">
+            {% for i in "12345" %}{% if forloop.counter <= rating_promedio %}★{% else %}☆{% endif %}{% endfor %}
+            <small class="text-muted ms-2">{{ rating_promedio|floatformat:1 }} ({{ total_resenas }} reseña{{ total_resenas|pluralize }})</small>
+        </div>
+        {% endif %}
 
-        {% if producto.stock > 0 %}
-            <div class="stock-badge disponible mb-3">
-                ✓ Disponible — {{ producto.stock }} unidad{{ producto.stock|pluralize:"es" }} en stock
+        <div class="product-price" id="precioMostrar">
+            {% if variantes %}desde {% endif %}{{ producto.precio_desde|clp }}
+        </div>
+
+        {% if producto.descripcion_corta %}
+            <p style="color:var(--text); font-size:0.95rem; line-height:1.6;">{{ producto.descripcion_corta }}</p>
+        {% endif %}
+
+        <p class="product-desc">{{ producto.descripcion|linebreaksbr }}</p>
+
+        {% if variantes %}
+        <div>
+            <small class="text-muted d-block mb-2" style="font-size:0.8rem; letter-spacing:0.05em; text-transform:uppercase;">Selecciona una opción</small>
+            <div class="variantes" id="variantes">
+                {% for v in variantes %}
+                <button type="button" class="variante-btn"
+                        data-id="{{ v.id }}"
+                        data-precio="{{ v.precio }}"
+                        data-stock="{{ v.stock }}"
+                        data-nombre="{{ v.nombre }}"
+                        {% if v.stock == 0 %}disabled{% endif %}>
+                    {{ v.nombre }}{% if v.stock == 0 %} (agotado){% endif %}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if not producto.agotado %}
+            <div class="stock-badge disponible mb-3" id="stockBadge">
+                {% if not variantes %}✓ Disponible — {{ producto.stock }} unidad{{ producto.stock|pluralize:"es" }} en stock{% endif %}
             </div>
 
-            <!-- Selector de cantidad + botón agregar -->
             <div class="d-flex align-items-center gap-3 mb-4">
                 <div class="d-flex align-items-center" style="border:1px solid var(--rose-light); border-radius:2px; overflow:hidden;">
-                    <button type="button" id="btn-menos"
-                            style="width:38px;height:38px;background:none;border:none;font-size:1.2rem;color:var(--terracotta);cursor:pointer;">−</button>
-                    <input type="number" id="cantidad" value="1" min="1" max="{{ producto.stock }}"
-                           style="width:46px;height:38px;border:none;border-left:1px solid var(--rose-light);border-right:1px solid var(--rose-light);text-align:center;font-size:0.9rem;">
-                    <button type="button" id="btn-mas"
-                            style="width:38px;height:38px;background:none;border:none;font-size:1.2rem;color:var(--terracotta);cursor:pointer;">+</button>
+                    <button type="button" id="btn-menos" style="width:38px;height:38px;background:none;border:none;font-size:1.2rem;color:var(--terracotta);cursor:pointer;">−</button>
+                    <input type="number" id="cantidad" value="1" min="1" max="{{ producto.stock|default:1 }}" style="width:46px;height:38px;border:none;border-left:1px solid var(--rose-light);border-right:1px solid var(--rose-light);text-align:center;font-size:0.9rem;">
+                    <button type="button" id="btn-mas" style="width:38px;height:38px;background:none;border:none;font-size:1.2rem;color:var(--terracotta);cursor:pointer;">+</button>
                 </div>
-                <button class="btn btn-primary btn-agregar btn-agregar-ajax"
+                <button class="btn btn-primary btn-agregar"
                         id="btn-agregar-detalle"
                         data-url="{% url 'carrito:agregar' producto.pk %}"
                         data-nombre="{{ producto.nombre }}">
@@ -124,65 +167,207 @@
 
             <div class="d-flex gap-3 flex-wrap">
                 <a href="https://wa.me/56989560937?text=Hola!%20Me%20interesa%20el%20producto%3A%20{{ producto.nombre|urlencode }}"
-                   target="_blank"
-                   class="btn btn-agregar"
+                   target="_blank" class="btn btn-agregar"
                    style="background-color:#25D366; border-color:#25D366; color:#fff;">
                     Consultar por WhatsApp
                 </a>
-                <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-outline-secondary btn-agregar">
-                    Volver
-                </a>
+                <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-outline-secondary btn-agregar">Volver</a>
             </div>
         {% else %}
             <div class="stock-badge mb-3">✗ Sin stock disponible</div>
-            <a href="https://wa.me/56989560937?text=Hola!%20Quiero%20saber%20cu%C3%A1ndo%20vuelve%20a%20estar%20disponible%3A%20{{ producto.nombre|urlencode }}"
-               target="_blank"
-               class="btn"
+            <form method="post" action="{% url 'catalogo:avisame_stock' producto.slug %}" class="d-flex gap-2 mb-3" style="max-width:420px;">
+                {% csrf_token %}
+                <input type="email" name="email" placeholder="Tu email" class="form-control" required
+                       value="{% if user.is_authenticated %}{{ user.email }}{% endif %}"
+                       style="border-radius:2px; border-color: var(--rose-light);">
+                <button type="submit" class="btn btn-primary">Avísame</button>
+            </form>
+            <a href="https://wa.me/56989560937?text=Hola!%20Quiero%20saber%20cu%C3%A1ndo%20vuelve%3A%20{{ producto.nombre|urlencode }}"
+               target="_blank" class="btn"
                style="background-color:#25D366; border-color:#25D366; color:#fff; border-radius:2px; font-size:0.85rem; padding:0.55rem 1.4rem;">
-                Consultar disponibilidad
-            </a>
-            <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-outline-secondary ms-2">
-                ← Ver otros productos
+                Consultar por WhatsApp
             </a>
         {% endif %}
     </div>
 </div>
 
+<!-- Reseñas -->
+<div class="reviews-section">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 style="font-size:1.4rem; margin:0;">Reseñas de clientes</h3>
+        {% if rating_promedio %}
+            <small class="text-muted">{{ rating_promedio|floatformat:1 }} / 5 — {{ total_resenas }} reseña{{ total_resenas|pluralize }}</small>
+        {% endif %}
+    </div>
+
+    {% if puede_valorar %}
+    <form method="post" action="{% url 'catalogo:crear_resena' producto.slug %}" class="card p-3 mb-4" style="background-color:#fff;">
+        {% csrf_token %}
+        <h6 style="margin-bottom:0.8rem;">Cuéntanos qué te pareció</h6>
+        <div class="mb-2">
+            <label class="form-label small">Calificación</label>
+            <select name="rating" class="form-select" required style="max-width:160px;">
+                <option value="">Elige...</option>
+                <option value="5">★★★★★ (5)</option>
+                <option value="4">★★★★☆ (4)</option>
+                <option value="3">★★★☆☆ (3)</option>
+                <option value="2">★★☆☆☆ (2)</option>
+                <option value="1">★☆☆☆☆ (1)</option>
+            </select>
+        </div>
+        <div class="mb-2">
+            <input type="text" name="titulo" class="form-control" placeholder="Título (opcional)" maxlength="120">
+        </div>
+        <div class="mb-2">
+            <textarea name="comentario" class="form-control" rows="3" placeholder="Comentario..." minlength="10" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-start;">Publicar reseña</button>
+    </form>
+    {% elif user.is_authenticated and ya_valoro %}
+        <p class="text-muted small fst-italic">Ya valoraste este producto.</p>
+    {% elif user.is_authenticated %}
+        <p class="text-muted small fst-italic">Solo puedes reseñar productos que ya hayas recibido.</p>
+    {% endif %}
+
+    {% for r in resenas %}
+    <div class="review-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="review-rating">
+                    {% for i in "12345" %}{% if forloop.counter <= r.rating %}★{% else %}☆{% endif %}{% endfor %}
+                </div>
+                {% if r.titulo %}<strong>{{ r.titulo }}</strong>{% endif %}
+            </div>
+            <div class="review-meta">{{ r.usuario.username }} · {{ r.creado|date:"d M Y" }}</div>
+        </div>
+        <p class="mt-2 mb-0" style="color:var(--text); font-size:0.92rem;">{{ r.comentario|linebreaksbr }}</p>
+    </div>
+    {% empty %}
+        {% if not puede_valorar %}<p class="text-muted fst-italic">Aún no hay reseñas.</p>{% endif %}
+    {% endfor %}
+</div>
+
+<!-- Productos relacionados -->
+{% if relacionados %}
+<div class="related-section">
+    <h3 style="font-size:1.4rem; margin-bottom:1.5rem;">También te puede interesar</h3>
+    <div class="row row-cols-2 row-cols-md-4 g-3">
+        {% for p in relacionados %}
+        <div class="col">
+            <div class="card h-100 product-card shadow-sm">
+                {% if p.imagen %}
+                    <img src="{{ p.imagen.url }}" class="card-img-top" alt="{{ p.nombre }}">
+                {% else %}
+                    <div class="placeholder-img">🌿</div>
+                {% endif %}
+                <div class="card-body">
+                    <div class="card-title" style="font-family:'Playfair Display', serif; font-size:0.95rem;">{{ p.nombre }}</div>
+                    <div class="precio mb-2" style="font-size:1rem;">{{ p.precio_desde|clp }}</div>
+                    <a href="{{ p.get_absolute_url }}" class="btn btn-outline-primary btn-sm w-100">Ver</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- JSON-LD Schema.org Product (rich snippets en Google) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org/",
+  "@type": "Product",
+  "name": "{{ producto.nombre|escapejs }}",
+  "description": "{% if producto.descripcion_corta %}{{ producto.descripcion_corta|escapejs }}{% else %}{{ producto.descripcion|truncatewords:30|escapejs }}{% endif %}",
+  {% if producto.imagen %}"image": "{{ request.scheme }}://{{ request.get_host }}{{ producto.imagen.url }}",{% endif %}
+  "category": "{{ producto.categoria|escapejs }}",
+  "offers": {
+    "@type": "Offer",
+    "url": "{{ request.scheme }}://{{ request.get_host }}{{ producto.get_absolute_url }}",
+    "priceCurrency": "CLP",
+    "price": "{{ producto.precio_desde }}",
+    "availability": "https://schema.org/{% if producto.agotado %}OutOfStock{% else %}InStock{% endif %}"
+  }{% if rating_promedio %},
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "{{ rating_promedio|floatformat:1 }}",
+    "reviewCount": "{{ total_resenas }}"
+  }{% endif %}
+}
+</script>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    // Galería: cambiar imagen al click
+    document.querySelectorAll('.gallery-thumb').forEach(t => {
+        t.addEventListener('click', function() {
+            document.getElementById('galleryMainImg').src = this.dataset.full;
+            document.querySelectorAll('.gallery-thumb').forEach(x => x.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Variantes: cambiar precio + stock al seleccionar
+    let varianteSeleccionada = null;
+    const precioMostrar = document.getElementById('precioMostrar');
+    const stockBadge = document.getElementById('stockBadge');
     const inputCantidad = document.getElementById('cantidad');
+    document.querySelectorAll('.variante-btn').forEach(b => {
+        b.addEventListener('click', function() {
+            if (this.disabled) return;
+            document.querySelectorAll('.variante-btn').forEach(x => x.classList.remove('selected'));
+            this.classList.add('selected');
+            varianteSeleccionada = this.dataset.id;
+            const precio = parseFloat(this.dataset.precio);
+            const stock = parseInt(this.dataset.stock);
+            precioMostrar.textContent = '$' + precio.toLocaleString('es-CL');
+            if (stockBadge) stockBadge.textContent = '✓ Disponible — ' + stock + ' unidades en stock';
+            if (inputCantidad) { inputCantidad.max = stock; if (parseInt(inputCantidad.value) > stock) inputCantidad.value = stock; }
+        });
+    });
+
+    // Cantidad +/-
     const btnMenos   = document.getElementById('btn-menos');
     const btnMas     = document.getElementById('btn-mas');
     const btnAgregar = document.getElementById('btn-agregar-detalle');
-
-    if (inputCantidad && btnMenos && btnMas && btnAgregar) {
-        const max = parseInt(inputCantidad.max);
-
+    if (inputCantidad && btnMenos && btnMas) {
         btnMenos.addEventListener('click', () => {
-            let v = parseInt(inputCantidad.value);
-            if (v > 1) inputCantidad.value = v - 1;
+            let v = parseInt(inputCantidad.value); if (v > 1) inputCantidad.value = v - 1;
         });
-
         btnMas.addEventListener('click', () => {
-            let v = parseInt(inputCantidad.value);
+            let v = parseInt(inputCantidad.value); const max = parseInt(inputCantidad.max);
             if (v < max) inputCantidad.value = v + 1;
         });
+    }
 
-        // Este botón maneja la cantidad — evita que el listener global lo capture
+    // Agregar al carrito (con cantidad y variante)
+    if (btnAgregar) {
         btnAgregar.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
+            e.preventDefault(); e.stopPropagation();
 
-            const url      = this.dataset.url;
-            const nombre   = this.dataset.nombre;
+            const tieneVariantes = document.querySelectorAll('.variante-btn').length > 0;
+            if (tieneVariantes && !varianteSeleccionada) {
+                const toastEl  = document.getElementById('cartToast');
+                const toastMsg = document.getElementById('cartToastMsg');
+                toastMsg.textContent = 'Selecciona una opción primero';
+                toastEl.style.backgroundColor = '#721c24';
+                new bootstrap.Toast(toastEl, { delay: 2500 }).show();
+                return;
+            }
+
+            const url = this.dataset.url;
             const cantidad = parseInt(inputCantidad.value) || 1;
 
             function getCookie(name) {
                 let v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
                 return v ? v[2] : null;
             }
+
+            const body = new URLSearchParams();
+            body.append('cantidad', cantidad);
+            if (varianteSeleccionada) body.append('variante', varianteSeleccionada);
 
             fetch(url, {
                 method: 'POST',
@@ -191,14 +376,14 @@
                     'X-CSRFToken': getCookie('csrftoken'),
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `cantidad=${cantidad}`,
+                body: body.toString(),
             })
             .then(r => r.json())
             .then(data => {
                 const toastEl  = document.getElementById('cartToast');
                 const toastMsg = document.getElementById('cartToastMsg');
                 if (data.ok) {
-                    toastMsg.textContent = `${data.cantidad > 1 ? data.cantidad + '× ' : ''}"${data.nombre}" agregado al carrito ✓`;
+                    toastMsg.textContent = (data.cantidad > 1 ? data.cantidad + '× ' : '') + '"' + data.nombre + '" agregado al carrito ✓';
                     toastEl.style.backgroundColor = '#3D2B1F';
                 } else {
                     toastMsg.textContent = data.error;
@@ -209,7 +394,7 @@
             .catch(() => {
                 const toastEl  = document.getElementById('cartToast');
                 const toastMsg = document.getElementById('cartToastMsg');
-                toastMsg.textContent = 'Error al agregar. Intenta de nuevo.';
+                toastMsg.textContent = 'Error al agregar.';
                 toastEl.style.backgroundColor = '#721c24';
                 new bootstrap.Toast(toastEl, { delay: 3000 }).show();
             });

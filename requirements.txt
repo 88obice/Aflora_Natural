@@ -9,3 +9,5 @@ gunicorn==23.0.0
 whitenoise==6.9.0
 dj-database-url==2.3.0
 cloudinary>=1.36.0
+requests>=2.31.0
+sentry-sdk[django]>=2.0

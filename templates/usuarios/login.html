@@ -43,7 +43,8 @@
         </button>
     </form>
     <div class="auth-footer">
-        ¿No tienes cuenta? <a href="{% url 'usuarios:registro' %}">Regístrate aquí</a>
+        <a href="{% url 'usuarios:password_reset' %}">¿Olvidaste tu contraseña?</a>
+        <div class="mt-2">¿No tienes cuenta? <a href="{% url 'usuarios:registro' %}">Regístrate aquí</a></div>
     </div>
 </div>
 {% endblock %}

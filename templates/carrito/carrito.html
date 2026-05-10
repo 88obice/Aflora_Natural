@@ -6,33 +6,17 @@
 {% block extra_css %}
 <style>
     .page-header { padding: 1.5rem 0 1.2rem; border-bottom: 1px solid var(--rose-light); margin-bottom: 2rem; }
-    .cart-table thead th {
-        font-family: 'Lato', sans-serif;
-        font-size: 0.78rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        border-bottom: 1px solid var(--rose-light);
-        font-weight: 400;
-    }
+    .cart-table thead th { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--rose-light); font-weight: 400; }
     .cart-table td { vertical-align: middle; border-color: var(--rose-light); }
     .cart-table .product-name { font-family: 'Playfair Display', serif; }
+    .cart-table img { width:60px; height:60px; object-fit:cover; border-radius:3px; }
     .total-row { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--terracotta); }
-    .btn-remove {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        background: none;
-        border: none;
-        text-decoration: underline;
-        padding: 0;
-    }
+    .btn-remove { font-size: 0.75rem; color: var(--text-muted); background: none; border: none; text-decoration: underline; padding: 0; cursor:pointer; }
     .btn-remove:hover { color: #c0392b; }
-    .cart-summary {
-        background: #fff;
-        border: 1px solid var(--rose-light);
-        border-radius: 4px;
-        padding: 1.5rem;
-    }
+    .cart-summary { background: #fff; border: 1px solid var(--rose-light); border-radius: 4px; padding: 1.5rem; }
+    .cant-form { display:inline-flex; align-items:center; }
+    .cant-form input { width:60px; height:32px; text-align:center; border:1px solid var(--rose-light); border-radius:2px; font-size:0.85rem; }
+    .cant-form button { background:none; border:none; color:var(--terracotta); cursor:pointer; padding:0 0.4rem; font-size:0.8rem; }
 </style>
 {% endblock %}
 
@@ -42,14 +26,14 @@
     <h2>Tu carrito</h2>
 </div>
 
-{% if carrito.items.all %}
+{% if items %}
 <div class="row">
     <div class="col-lg-8">
         <div class="table-responsive">
             <table class="table cart-table">
                 <thead>
                     <tr>
-                        <th>Producto</th>
+                        <th colspan="2">Producto</th>
                         <th>Precio</th>
                         <th>Cantidad</th>
                         <th>Subtotal</th>
@@ -57,14 +41,28 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in carrito.items.all %}
+                    {% for item in items %}
                     <tr>
-                        <td class="product-name">{{ item.producto.nombre }}</td>
-                        <td class="text-muted">{{ item.producto.precio|clp }}</td>
-                        <td>{{ item.cantidad }}</td>
+                        <td style="width:80px;">
+                            {% if item.producto.imagen %}<img src="{{ item.producto.imagen.url }}" alt="">{% endif %}
+                        </td>
+                        <td class="product-name">
+                            <a href="{{ item.producto.get_absolute_url }}" style="color:inherit; text-decoration:none;">{{ item.producto.nombre }}</a>
+                            {% if item.variante %}<br><small class="text-muted">{{ item.variante.nombre }}</small>{% endif %}
+                        </td>
+                        <td class="text-muted">{{ item.precio_unitario|clp }}</td>
+                        <td>
+                            <form method="post" action="{% url 'carrito:actualizar' item.pk %}" class="cant-form">
+                                {% csrf_token %}
+                                <input type="number" name="cantidad" value="{{ item.cantidad }}" min="0" max="{{ item.stock_disponible }}" onchange="this.form.submit()">
+                            </form>
+                        </td>
                         <td class="precio">{{ item.subtotal|clp }}</td>
                         <td>
-                            <a href="{% url 'carrito:eliminar' item.pk %}" class="btn-remove">Eliminar</a>
+                            <form method="post" action="{% url 'carrito:eliminar' item.pk %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-remove">Eliminar</button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}
@@ -75,21 +73,37 @@
     </div>
 
     <div class="col-lg-4 mt-4 mt-lg-0">
-        <div class="cart-summary">
-            <div class="d-flex justify-content-between align-items-baseline mb-3">
-                <span style="font-size:0.85rem; color:var(--text-muted);">Total del pedido</span>
-                <span class="total-row">{{ carrito.total|clp }}</span>
+        {% if falta_para_gratis > 0 %}
+        <div class="mb-3 p-3 rounded" style="background:#fff8f0; border:1px solid var(--rose-light);">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span style="font-size:1.1rem;">🚚</span>
+                <span style="font-size:0.88rem; color:var(--terracotta); font-weight:600;">
+                    Te faltan {{ falta_para_gratis|clp }} para envío gratis
+                </span>
             </div>
+            {% with progreso=carrito.total|floatformat:0 %}
+            <div class="progress" style="height:6px; border-radius:3px;">
+                <div class="progress-bar" role="progressbar"
+                     style="width:{% widthratio carrito.total umbral_envio_gratis 100 %}%; background:var(--terracotta);">
+                </div>
+            </div>
+            {% endwith %}
+        </div>
+        {% else %}
+        <div class="mb-3 p-3 rounded d-flex align-items-center gap-2" style="background:#f0faf5; border:1px solid #b2dfdb;">
+            <span style="font-size:1.1rem;">✅</span>
+            <span style="font-size:0.88rem; color:#2e7d62; font-weight:600;">¡Envío gratis en tu pedido!</span>
+        </div>
+        {% endif %}
+
+        <div class="cart-summary">
+            <div class="d-flex justify-content-between align-items-baseline mb-2">
+                <span style="font-size:0.85rem; color:var(--text-muted);">Subtotal</span>
+                <span class="precio">{{ carrito.total|clp }}</span>
+            </div>
+            <small class="text-muted d-block mb-3">Costo de envío se calcula en el siguiente paso</small>
             <hr style="border-color: var(--rose-light);">
-            {% if user.is_authenticated %}
-                <a href="{% url 'pedidos:crear_pedido' %}" class="btn btn-primary w-100">
-                    Finalizar compra
-                </a>
-            {% else %}
-                <a href="{% url 'usuarios:login' %}" class="btn btn-primary w-100">
-                    Iniciar sesión para comprar
-                </a>
-            {% endif %}
+            <a href="{% url 'pedidos:crear_pedido' %}" class="btn btn-primary w-100">Continuar al checkout</a>
         </div>
     </div>
 </div>

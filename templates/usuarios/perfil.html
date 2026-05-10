@@ -1,171 +1,58 @@
 {% extends 'base.html' %}
+{% load aflora_filters %}
 
-{% block title %}Mi perfil — Aflora Natural{% endblock %}
-
-{% block extra_css %}
-<style>
-    .perfil-header {
-        background: linear-gradient(135deg, var(--cream-dark) 0%, var(--rose-light) 100%);
-        border-radius: 4px;
-        padding: 2.5rem 2rem;
-        margin-bottom: 2rem;
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-    }
-    .perfil-avatar {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background-color: var(--terracotta);
-        color: #fff;
-        font-family: 'Playfair Display', serif;
-        font-size: 1.6rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    .perfil-nombre {
-        font-family: 'Playfair Display', serif;
-        font-size: 1.4rem;
-        color: var(--text);
-        margin-bottom: 0.2rem;
-    }
-    .perfil-meta {
-        font-size: 0.83rem;
-        color: var(--text-muted);
-    }
-    .info-label {
-        font-size: 0.75rem;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        margin-bottom: 0.2rem;
-    }
-    .info-value {
-        font-size: 0.95rem;
-        color: var(--text);
-    }
-    .estado-badge {
-        display: inline-block;
-        padding: 0.25em 0.75em;
-        border-radius: 2px;
-        font-size: 0.75rem;
-        letter-spacing: 0.05em;
-        font-weight: 600;
-    }
-    .estado-pendiente  { background: #FFF3CD; color: #856404; }
-    .estado-confirmado { background: #D1E7DD; color: #0A3622; }
-    .estado-enviado    { background: #CFE2FF; color: #084298; }
-    .estado-entregado  { background: #D1E7DD; color: #0A3622; }
-    .estado-cancelado  { background: #F8D7DA; color: #58151C; }
-    .pedido-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.9rem 1.1rem;
-        border-bottom: 1px solid var(--rose-light);
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-    .pedido-row:last-child { border-bottom: none; }
-    .pedido-id {
-        font-family: 'Playfair Display', serif;
-        font-size: 0.95rem;
-        color: var(--text);
-    }
-    .pedido-fecha {
-        font-size: 0.8rem;
-        color: var(--text-muted);
-    }
-    .pedido-total {
-        font-family: 'Playfair Display', serif;
-        color: var(--terracotta);
-        font-size: 1rem;
-    }
-    .section-label {
-        font-size: 0.75rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        margin-bottom: 0.8rem;
-    }
-</style>
-{% endblock %}
+{% block title %}Mi cuenta — Aflora Natural{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-7">
+<div class="page-header" style="padding:1.5rem 0; border-bottom:1px solid var(--rose-light); margin-bottom:2rem;">
+    <h2>Hola, {{ user.first_name|default:user.username }}</h2>
+</div>
 
-        <!-- Encabezado del perfil -->
-        <div class="perfil-header">
-            <div class="perfil-avatar">{{ user.username|first|upper }}</div>
-            <div>
-                <div class="perfil-nombre">{{ user.username }}</div>
-                <div class="perfil-meta">
-                    {{ user.email }}
-                    &nbsp;·&nbsp;
-                    Cliente desde {{ user.date_joined|date:"F Y" }}
+<div class="row g-4">
+    <div class="col-md-3">
+        <div class="card p-3" style="border-color:var(--rose-light);">
+            <strong style="font-family:'Playfair Display', serif;">Tu cuenta</strong>
+            <ul class="list-unstyled mt-2 mb-0 small">
+                <li><a href="{% url 'usuarios:editar_perfil' %}" style="color:var(--terracotta);">Editar perfil</a></li>
+                <li><a href="{% url 'usuarios:direcciones' %}" style="color:var(--terracotta);">Mis direcciones</a></li>
+                <li><a href="{% url 'pedidos:historial' %}" style="color:var(--terracotta);">Historial de pedidos</a></li>
+                <li><a href="{% url 'catalogo:ver_wishlist' %}" style="color:var(--terracotta);">Mis favoritos</a></li>
+                <li><a href="{% url 'usuarios:password_reset' %}" style="color:var(--terracotta);">Cambiar contraseña</a></li>
+                <li><a href="{% url 'usuarios:logout' %}" style="color:var(--text-muted);">Cerrar sesión</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-md-9">
+        <div class="card p-4 mb-3" style="border-color:var(--rose-light);">
+            <h5 style="font-size:1.05rem;">Pedidos recientes</h5>
+            {% for p in pedidos_recientes %}
+            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--cream-dark);">
+                <div>
+                    <a href="{% url 'pedidos:detalle_pedido' p.pk %}" style="color:var(--terracotta); text-decoration:none;">Pedido #{{ p.pk }}</a>
+                    <small class="text-muted d-block">{{ p.creado|date:"d M Y" }} · <span style="text-transform:capitalize;">{{ p.get_estado_display }}</span></small>
                 </div>
+                <span class="precio">{{ p.total|clp }}</span>
             </div>
-        </div>
-
-        <!-- Datos de cuenta -->
-        <div class="section-label">Información de cuenta</div>
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-sm-4">
-                        <div class="info-label">Usuario</div>
-                        <div class="info-value">{{ user.username }}</div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="info-label">Email</div>
-                        <div class="info-value">{{ user.email|default:"—" }}</div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="info-label">Miembro desde</div>
-                        <div class="info-value">{{ user.date_joined|date:"d/m/Y" }}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pedidos recientes -->
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="section-label mb-0">Pedidos recientes</div>
-            <a href="{% url 'pedidos:historial' %}" class="btn btn-outline-secondary btn-sm">Ver todos →</a>
-        </div>
-
-        <div class="card shadow-sm">
+            {% empty %}
+                <p class="text-muted small fst-italic">Aún no tienes pedidos. <a href="{% url 'catalogo:lista_productos' %}">Explora el catálogo</a>.</p>
+            {% endfor %}
             {% if pedidos_recientes %}
-                {% for pedido in pedidos_recientes %}
-                <div class="pedido-row">
-                    <div>
-                        <div class="pedido-id">Pedido #{{ pedido.pk }}</div>
-                        <div class="pedido-fecha">{{ pedido.creado|date:"d/m/Y H:i" }}</div>
-                    </div>
-                    <div class="text-center">
-                        <span class="estado-badge estado-{{ pedido.estado }}">
-                            {{ pedido.get_estado_display }}
-                        </span>
-                    </div>
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="pedido-total">${{ pedido.total }}</span>
-                        <a href="{% url 'pedidos:detalle_pedido' pedido.pk %}"
-                           class="btn btn-outline-primary btn-sm">Ver</a>
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="card-body text-center py-4">
-                    <p class="text-muted mb-3" style="font-size:0.9rem;">Aún no tienes pedidos.</p>
-                    <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary btn-sm">Explorar catálogo</a>
-                </div>
+                <a href="{% url 'pedidos:historial' %}" class="btn btn-outline-secondary btn-sm mt-2 align-self-start">Ver todos →</a>
             {% endif %}
         </div>
 
+        <div class="card p-4" style="border-color:var(--rose-light);">
+            <h5 style="font-size:1.05rem;">Direcciones</h5>
+            {% for d in direcciones %}
+            <div class="py-2 small" style="border-bottom:1px solid var(--cream-dark);">
+                <strong>{{ d.alias }}</strong>{% if d.es_predeterminada %} <small class="text-muted">★</small>{% endif %}
+                <div class="text-muted">{{ d.linea_completa }}</div>
+            </div>
+            {% empty %}
+                <p class="text-muted small fst-italic">Sin direcciones guardadas. <a href="{% url 'usuarios:crear_direccion' %}">Agregar una</a>.</p>
+            {% endfor %}
+        </div>
     </div>
 </div>
 {% endblock %}

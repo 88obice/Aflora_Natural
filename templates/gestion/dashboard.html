@@ -5,84 +5,30 @@
 
 {% block extra_css %}
 <style>
-    .gestion-nav {
-        background: #fff;
-        border: 1px solid var(--rose-light);
-        border-radius: 4px;
-        padding: 0.8rem 1.2rem;
-        margin-bottom: 2rem;
-        display: flex;
-        gap: 1.5rem;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .gestion-nav a {
-        font-size: 0.85rem;
-        color: var(--text-muted);
-        text-decoration: none;
-        letter-spacing: 0.04em;
-        padding-bottom: 2px;
-        border-bottom: 2px solid transparent;
-        transition: color 0.2s, border-color 0.2s;
-    }
-    .gestion-nav a:hover,
-    .gestion-nav a.active {
-        color: var(--terracotta);
-        border-bottom-color: var(--terracotta);
-    }
-    .gestion-nav .nav-title {
-        font-family: 'Playfair Display', serif;
-        font-size: 0.95rem;
-        color: var(--terracotta);
-        margin-right: 0.5rem;
-    }
+    .gestion-nav { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:0.8rem 1.2rem; margin-bottom:2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
+    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; padding-bottom:2px; border-bottom:2px solid transparent; transition:color 0.2s, border-color 0.2s; }
+    .gestion-nav a:hover, .gestion-nav a.active { color:var(--terracotta); border-bottom-color:var(--terracotta); }
+    .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
 
-    .stat-card {
-        background: #fff;
-        border: 1px solid var(--rose-light);
-        border-radius: 4px;
-        padding: 1.5rem;
-        text-align: center;
-    }
-    .stat-number {
-        font-family: 'Playfair Display', serif;
-        font-size: 2.5rem;
-        color: var(--terracotta);
-        line-height: 1;
-        margin-bottom: 0.4rem;
-    }
-    .stat-label {
-        font-size: 0.8rem;
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        color: var(--text-muted);
-    }
-    .stat-card.alerta .stat-number { color: #c0392b; }
-    .stat-card.ok    .stat-number { color: #27ae60; }
+    .kpi-card { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1.4rem; height:100%; }
+    .kpi-card .label { font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.4rem; }
+    .kpi-card .value { font-family:'Playfair Display',serif; font-size:1.7rem; color:var(--terracotta); }
+    .kpi-card .sub { font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem; }
+    .kpi-card.alert { border-color:#f5c6cb; background:#fff8f8; }
+    .kpi-card.alert .value { color:#c0392b; }
 
-    .section-label {
-        font-family: 'Playfair Display', serif;
-        font-size: 1.1rem;
-        margin-bottom: 1rem;
-        margin-top: 2rem;
-    }
-    .recent-table td { font-size: 0.88rem; border-color: var(--rose-light); vertical-align: middle; }
-    .recent-table th {
-        font-size: 0.75rem; letter-spacing: 0.07em; text-transform: uppercase;
-        color: var(--text-muted); font-weight: 400; border-color: var(--rose-light);
-    }
-    .estado-badge {
-        display: inline-block;
-        padding: 0.25em 0.8em;
-        border-radius: 2px;
-        font-size: 0.75rem;
-        letter-spacing: 0.05em;
-        background-color: var(--rose-light);
-        color: var(--terracotta);
-    }
-    .estado-badge.enviado   { background-color: #d4edda; color: #155724; }
-    .estado-badge.entregado { background-color: #cce5ff; color: #004085; }
-    .estado-badge.cancelado { background-color: #f8d7da; color: #721c24; }
+    .panel { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1.4rem; margin-top:1.5rem; }
+    .panel h5 { font-size:1rem; margin-bottom:1rem; }
+    .panel table { font-size:0.88rem; }
+    .panel table th { font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); font-weight:400; border-color:var(--rose-light); }
+    .panel table td { border-color:var(--rose-light); vertical-align:middle; }
+    .estado-pill { display:inline-block; padding:0.18em 0.7em; border-radius:20px; font-size:0.72rem; }
+    .estado-pendiente   { background:#fff3cd; color:#856404; }
+    .estado-confirmado  { background:#d1ecf1; color:#0c5460; }
+    .estado-preparando  { background:#fcefdc; color:#856404; }
+    .estado-enviado     { background:#cce5ff; color:#004085; }
+    .estado-entregado   { background:#d4edda; color:#155724; }
+    .estado-cancelado   { background:#f8d7da; color:#721c24; }
 </style>
 {% endblock %}
 
@@ -93,74 +39,129 @@
     <a href="{% url 'gestion:dashboard' %}" class="active">Dashboard</a>
     <a href="{% url 'gestion:pedidos' %}">Pedidos</a>
     <a href="{% url 'gestion:productos' %}">Productos</a>
+    <a href="{% url 'gestion:categorias_lista' %}">Categorías</a>
+    <a href="{% url 'gestion:resenas_lista' %}">Reseñas</a>
+    <a href="{% url 'gestion:newsletter_lista' %}">Newsletter</a>
+                    <a href="{% url 'gestion:newsletter_crear' %}" class="btn btn-outline-primary btn-sm">+ Nueva campaña newsletter</a>
+                <a href="{% url 'gestion:notificaciones_stock' %}">Notif. stock</a>
     <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
 </div>
 
-<h2 class="mb-1">Bienvenida, {{ request.user.first_name|default:request.user.username }}</h2>
-<p class="text-muted mb-4" style="font-size:0.88rem;">Resumen del estado actual de la tienda</p>
+<h2 class="mb-4">Resumen</h2>
 
-<!-- Stats -->
-<div class="row g-3 mb-2">
-    <div class="col-6 col-md-4">
-        <div class="stat-card {% if pedidos_nuevos > 0 %}alerta{% endif %}">
-            <div class="stat-number">{{ pedidos_nuevos }}</div>
-            <div class="stat-label">Pedidos pendientes</div>
+<div class="row g-3">
+    <div class="col-md-3 col-6">
+        <div class="kpi-card">
+            <div class="label">Ventas mes actual</div>
+            <div class="value">{{ ventas_mes_total|clp }}</div>
+            <div class="sub">{{ ventas_mes_n }} pedido{{ ventas_mes_n|pluralize }}</div>
         </div>
     </div>
-    <div class="col-6 col-md-4">
-        <div class="stat-card">
-            <div class="stat-number">{{ total_pedidos }}</div>
-            <div class="stat-label">Pedidos totales</div>
+    <div class="col-md-3 col-6">
+        <div class="kpi-card">
+            <div class="label">Últimos 30 días</div>
+            <div class="value">{{ ventas_30_total|clp }}</div>
+            <div class="sub">{{ ventas_30_n }} pedido{{ ventas_30_n|pluralize }}</div>
         </div>
     </div>
-    <div class="col-6 col-md-4">
-        <div class="stat-card {% if productos_bajo_stock > 0 %}alerta{% endif %}">
-            <div class="stat-number">{{ productos_bajo_stock }}</div>
-            <div class="stat-label">Productos con poco stock</div>
+    <div class="col-md-3 col-6">
+        <div class="kpi-card {% if pedidos_nuevos > 0 %}alert{% endif %}">
+            <div class="label">Por preparar</div>
+            <div class="value">{{ pedidos_nuevos }}</div>
+            <div class="sub">confirmados sin enviar</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="kpi-card {% if productos_bajo_stock_count > 0 %}alert{% endif %}">
+            <div class="label">Stock crítico</div>
+            <div class="value">{{ productos_bajo_stock_count }}</div>
+            <div class="sub">productos con ≤3 unidades</div>
         </div>
     </div>
 </div>
 
-<!-- Pedidos recientes -->
-<div class="section-label">Pedidos recientes</div>
-{% if pedidos_recientes %}
-<div class="table-responsive">
-    <table class="table recent-table">
-        <thead>
-            <tr>
-                <th>N°</th>
-                <th>Cliente</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-                <th>Total</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for pedido in pedidos_recientes %}
-            <tr>
-                <td style="color:var(--text-muted);">#{{ pedido.id }}</td>
-                <td>{{ pedido.usuario.username }}</td>
-                <td>{{ pedido.creado|date:"d/m/Y H:i" }}</td>
-                <td>
-                    <span class="estado-badge {{ pedido.estado }}">
-                        {{ pedido.get_estado_display }}
-                    </span>
-                </td>
-                <td class="precio">{{ pedido.total|clp }}</td>
-                <td>
-                    <a href="{% url 'gestion:detalle_pedido' pedido.pk %}" class="btn btn-outline-primary btn-sm">
-                        Ver
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="row g-3 mt-1">
+    <div class="col-md-6">
+        <div class="panel">
+            <h5>Pedidos recientes</h5>
+            <table class="table mb-0">
+                <thead><tr><th>#</th><th>Cliente</th><th>Estado</th><th>Total</th></tr></thead>
+                <tbody>
+                {% for p in pedidos_recientes %}
+                <tr>
+                    <td><a href="{% url 'gestion:detalle_pedido' p.pk %}" style="color:var(--terracotta); text-decoration:none;">#{{ p.pk }}</a></td>
+                    <td class="text-muted">{{ p.nombre_destinatario }}</td>
+                    <td><span class="estado-pill estado-{{ p.estado }}">{{ p.get_estado_display }}</span></td>
+                    <td class="precio">{{ p.total|clp }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-muted fst-italic">Sin pedidos aún.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <a href="{% url 'gestion:pedidos' %}" class="btn btn-outline-secondary btn-sm mt-2">Ver todos →</a>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="panel">
+            <h5>Más vendidos</h5>
+            <table class="table mb-0">
+                <thead><tr><th>Producto</th><th class="text-end">Vendidos</th><th class="text-end">Ingresos</th></tr></thead>
+                <tbody>
+                {% for prod in productos_top %}
+                <tr>
+                    <td>{{ prod.producto__nombre }}</td>
+                    <td class="text-end">{{ prod.vendidos }}</td>
+                    <td class="text-end precio">{{ prod.ingresos|clp }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted fst-italic">Sin ventas confirmadas aún.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
-<a href="{% url 'gestion:pedidos' %}" class="btn btn-outline-secondary btn-sm">Ver todos los pedidos →</a>
-{% else %}
-<p class="text-muted fst-italic">No hay pedidos aún.</p>
-{% endif %}
+
+<div class="row g-3 mt-1">
+    <div class="col-md-6">
+        <div class="panel">
+            <h5>Stock crítico</h5>
+            <table class="table mb-0">
+                <thead><tr><th>Producto</th><th class="text-end">Stock</th><th></th></tr></thead>
+                <tbody>
+                {% for p in productos_bajo_stock %}
+                <tr>
+                    <td>{{ p.nombre }}</td>
+                    <td class="text-end"><strong>{{ p.stock }}</strong></td>
+                    <td class="text-end"><a href="{% url 'gestion:editar_producto' p.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted fst-italic">Todo OK.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="panel">
+            <h5>Acciones rápidas</h5>
+            <div class="d-flex flex-column gap-2">
+                <a href="{% url 'gestion:crear_producto' %}" class="btn btn-outline-primary btn-sm">+ Agregar producto</a>
+                <a href="{% url 'gestion:exportar_pedidos' %}" class="btn btn-outline-primary btn-sm">⇩ Exportar pedidos a CSV</a>
+                                <a href="{% url 'gestion:newsletter_crear' %}" class="btn btn-outline-primary btn-sm">+ Nueva campaña newsletter</a>
+                <a href="{% url 'gestion:notificaciones_stock' %}" class="btn btn-outline-primary btn-sm">
+                    Ver notificaciones de stock
+                    {% if notificaciones_pendientes %}<span class="badge bg-warning text-dark ms-1">{{ notificaciones_pendientes }}</span>{% endif %}
+                </a>
+                {% if pedidos_pendientes_pago %}
+                <small class="text-muted mt-2">Hay {{ pedidos_pendientes_pago }} pedido{{ pedidos_pendientes_pago|pluralize }} con pago pendiente (sin confirmar en MP).</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}

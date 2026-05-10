@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load aflora_filters %}
+{% block title %}{% if modo == 'crear' %}Nueva campaña{% else %}Campaña #{{ campana.pk }}{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+    .gestion-nav { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:0.8rem 1.2rem; margin-bottom:2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
+    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; }
+    .gestion-nav a:hover { color:var(--terracotta); }
+    .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
+    .estado-pill { display:inline-block; padding:0.18em 0.7em; border-radius:20px; font-size:0.72rem; }
+    .estado-borrador { background:#e2e3e5; color:#383d41; }
+    .estado-enviada  { background:#d4edda; color:#155724; }
+    .estado-enviando { background:#fff3cd; color:#856404; }
+    .estado-error    { background:#f8d7da; color:#721c24; }
+    .danger-zone { background:#fff8f8; border:1px solid #f5c6cb; border-radius:4px; padding:1.2rem; margin-top:2rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="gestion-nav">
+    <span class="nav-title">Gestión</span>
+    <a href="{% url 'gestion:dashboard' %}">Dashboard</a>
+    <a href="{% url 'gestion:pedidos' %}">Pedidos</a>
+    <a href="{% url 'gestion:productos' %}">Productos</a>
+    <a href="{% url 'gestion:categorias_lista' %}">Categorías</a>
+    <a href="{% url 'gestion:resenas_lista' %}">Reseñas</a>
+    <a href="{% url 'gestion:newsletter_lista' %}">Newsletter</a>
+    <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
+</div>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h2 class="mb-1">
+            {% if modo == 'crear' %}Nueva campaña{% else %}Campaña #{{ campana.pk }}{% endif %}
+        </h2>
+        {% if campana %}
+        <small><span class="estado-pill estado-{{ campana.estado }}">{{ campana.get_estado_display }}</span></small>
+        {% endif %}
+    </div>
+    <a href="{% url 'gestion:newsletter_lista' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+</div>
+
+<form method="post" class="card p-4" style="background:#fff; border-color:var(--rose-light);">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label class="form-label">Asunto</label>
+        {{ form.asunto }}
+        <small class="text-muted">Lo que ven en la bandeja de entrada.</small>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Cuerpo del email (texto plano)</label>
+        {{ form.cuerpo }}
+        <small class="text-muted">Variables disponibles: <code>{email}</code>. El link de baja se agrega automático.</small>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Nota interna (no se envía)</label>
+        {{ form.nota_interna }}
+    </div>
+    {% if form.errors %}<div class="alert alert-danger small">{{ form.errors }}</div>{% endif %}
+    {% if campana.estado != 'enviada' %}
+        <button class="btn btn-primary align-self-start">Guardar borrador</button>
+    {% else %}
+        <small class="text-muted">Esta campaña ya fue enviada y no se puede editar.</small>
+    {% endif %}
+</form>
+
+{% if campana %}
+<div class="row mt-3 g-3">
+    <div class="col-md-6">
+        <div class="card p-3" style="background:#fff; border-color:var(--rose-light);">
+            <h6 style="font-size:0.95rem;">Probar antes de enviar</h6>
+            <small class="text-muted d-block mb-2">Te llega solo a ti para que veas cómo se ve.</small>
+            <form method="post" action="{% url 'gestion:newsletter_enviar_prueba' campana.pk %}" class="d-flex gap-2">
+                {% csrf_token %}
+                <input type="email" name="email_prueba" class="form-control" placeholder="{{ user.email|default:'tu@email.com' }}" value="{{ user.email }}">
+                <button class="btn btn-outline-primary">Enviar prueba</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-6">
+        {% if campana.estado != 'enviada' %}
+        <div class="danger-zone">
+            <h6 style="font-size:0.95rem; color:#721c24;">Enviar a TODOS los suscriptores</h6>
+            <small class="text-muted d-block mb-2">
+                Esto va a {{ total_suscriptores }} persona{{ total_suscriptores|pluralize }}.
+                <strong>No se puede deshacer.</strong> Escribe <code>SI</code> para confirmar.
+            </small>
+            <form method="post" action="{% url 'gestion:newsletter_enviar_real' campana.pk %}" class="d-flex gap-2">
+                {% csrf_token %}
+                <input type="text" name="confirmar" class="form-control" placeholder="Escribe SI" required>
+                <button class="btn btn-danger">Enviar a todos</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="card p-3" style="background:#d4edda; border-color:#c3e6cb;">
+            <h6 style="font-size:0.95rem;">✓ Campaña enviada</h6>
+            <small>{{ campana.total_enviados }}/{{ campana.total_destinatarios }} entregados el {{ campana.enviada_en|date:"d M Y H:i" }}.</small>
+            {% if campana.total_fallidos %}
+                <small class="text-danger d-block">{{ campana.total_fallidos }} fallaron — revisa los logs.</small>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

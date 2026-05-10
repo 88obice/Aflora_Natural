@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Términos y condiciones — Aflora Natural{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h1 style="font-size:2rem; margin-top:1.5rem;">Términos y condiciones</h1>
+        <p class="text-muted small">Última actualización: abril 2026</p>
+
+        <p style="line-height:1.8;">
+            Estos términos rigen el uso del sitio Aflora Natural y la compra de productos a través de él. Al usar el sitio
+            o realizar una compra, aceptas estos términos.
+        </p>
+
+        <h4 style="margin-top:2rem;">1. Vendedor</h4>
+        <p style="line-height:1.8;">Aflora Natural es una microempresa con domicilio en Santiago, Chile. Todas las
+            ventas se rigen por la legislación chilena, en particular la Ley 19.496 sobre Protección de los Derechos del Consumidor.</p>
+
+        <h4 style="margin-top:2rem;">2. Precios y pagos</h4>
+        <p style="line-height:1.8;">
+            Todos los precios están en pesos chilenos (CLP) e incluyen IVA cuando corresponde. Los pagos se procesan
+            a través de Mercado Pago, que admite tarjetas de crédito, débito y otros medios.
+        </p>
+
+        <h4 style="margin-top:2rem;">3. Stock y disponibilidad</h4>
+        <p style="line-height:1.8;">
+            Trabajamos en pequeños lotes artesanales. Si un producto se agota mientras tu pago está siendo procesado,
+            te contactaremos para devolverte el dinero o reemplazar el producto, según prefieras.
+        </p>
+
+        <h4 style="margin-top:2rem;">4. Envíos y devoluciones</h4>
+        <p style="line-height:1.8;">
+            Consulta nuestra <a href="{% url 'catalogo:pagina_envios' %}">política de envíos y devoluciones</a> para los detalles.
+        </p>
+
+        <h4 style="margin-top:2rem;">5. Propiedad intelectual</h4>
+        <p style="line-height:1.8;">
+            El contenido del sitio (textos, imágenes, marca) es propiedad de Aflora Natural y no puede reproducirse
+            sin autorización previa.
+        </p>
+
+        <h4 style="margin-top:2rem;">6. Modificaciones</h4>
+        <p style="line-height:1.8;">
+            Podemos actualizar estos términos en cualquier momento. La versión vigente es la publicada en este sitio.
+        </p>
+
+        <h4 style="margin-top:2rem;">7. Contacto</h4>
+        <p style="line-height:1.8;">
+            Para cualquier consulta: <a href="mailto:hola@afloranatural.cl">hola@afloranatural.cl</a> o
+            WhatsApp <a href="https://wa.me/56989560937">+56 9 8956 0937</a>.
+        </p>
+    </div>
+</div>
+{% endblock %}

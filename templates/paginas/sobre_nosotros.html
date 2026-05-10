@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Sobre nosotros — Aflora Natural{% endblock %}
+{% block meta_description %}Aflora Natural: velas, homesprays y difusores artesanales hechos a mano en Santiago de Chile, con ingredientes naturales.{% endblock %}
+
+{% block content %}
+<div class="row align-items-center g-5 mt-3">
+    <div class="col-md-5">
+        <div style="background:var(--cream-dark); border-radius:4px; height:380px; display:flex; align-items:center; justify-content:center; color:var(--rose); font-size:5rem;">🌸</div>
+    </div>
+    <div class="col-md-7">
+        <p style="font-size:0.78rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.6rem;">Nuestra historia</p>
+        <h1 style="font-size:2.2rem; margin-bottom:1.3rem;">Los aromas son emociones que se respiran</h1>
+        <p style="color:var(--text-muted); line-height:1.8; font-size:1rem;">
+            Aflora Natural nació con una convicción simple: los aromas tienen el poder de transformar un espacio
+            y el estado de ánimo de quienes lo habitan. Cada vela, cada homespray y cada difusor que elaboramos
+            lleva ese propósito.
+        </p>
+        <p style="color:var(--text-muted); line-height:1.8; font-size:1rem;">
+            Trabajamos con ingredientes naturales, en pequeños lotes artesanales, desde Santiago de Chile.
+            No usamos químicos artificiales ni conservantes innecesarios; preferimos hacerlo bien antes que hacerlo rápido.
+        </p>
+    </div>
+</div>
+
+<div class="row g-4 mt-5 text-center">
+    <div class="col-md-4">
+        <div style="font-size:2rem; margin-bottom:0.5rem;">🌿</div>
+        <h5 style="font-family:'Playfair Display',serif; color:var(--terracotta);">Naturales</h5>
+        <p class="text-muted small">Ceras vegetales, aceites esenciales y fragancias premium.</p>
+    </div>
+    <div class="col-md-4">
+        <div style="font-size:2rem; margin-bottom:0.5rem;">✂️</div>
+        <h5 style="font-family:'Playfair Display',serif; color:var(--terracotta);">Hechos a mano</h5>
+        <p class="text-muted small">Cada pieza pasa por nuestras manos. Nada de producción en masa.</p>
+    </div>
+    <div class="col-md-4">
+        <div style="font-size:2rem; margin-bottom:0.5rem;">🇨🇱</div>
+        <h5 style="font-family:'Playfair Display',serif; color:var(--terracotta);">Hechos en Chile</h5>
+        <p class="text-muted small">Desde Santiago, despachamos a todo el país.</p>
+    </div>
+</div>
+
+<div class="text-center mt-5">
+    <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary">Ver catálogo</a>
+    <a href="{% url 'catalogo:pagina_contacto' %}" class="btn btn-outline-primary ms-2">Contáctanos</a>
+</div>
+{% endblock %}

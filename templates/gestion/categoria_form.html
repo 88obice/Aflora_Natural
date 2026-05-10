@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}{% if modo == 'crear' %}Nueva categoría{% else %}Editar: {{ categoria.nombre }}{% endif %}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>{% if modo == 'crear' %}Nueva categoría{% else %}Editar: {{ categoria.nombre }}{% endif %}</h2>
+    <a href="{% url 'gestion:categorias_lista' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+</div>
+<form method="post" enctype="multipart/form-data" class="card p-4" style="background:#fff; border-color:var(--rose-light); max-width:680px;">
+    {% csrf_token %}
+    <div class="row g-3">
+        <div class="col-md-8">
+            <label class="form-label">Nombre</label>{{ form.nombre }}
+            <small class="text-muted">El slug (URL) se genera automático desde el nombre.</small>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Orden</label>{{ form.orden }}
+            <small class="text-muted">Menor = aparece primero.</small>
+        </div>
+        <div class="col-12"><label class="form-label">Descripción (opcional)</label>{{ form.descripcion }}</div>
+        <div class="col-12">
+            <label class="form-label">Imagen de la categoría (opcional)</label>{{ form.imagen }}
+            {% if categoria.imagen %}<small class="d-block mt-1">Actual: <a href="{{ categoria.imagen.url }}" target="_blank">ver</a></small>{% endif %}
+        </div>
+    </div>
+    {% if form.errors %}<div class="alert alert-danger small mt-3">{{ form.errors }}</div>{% endif %}
+    <div class="mt-3"><button class="btn btn-primary">Guardar</button></div>
+</form>
+{% endblock %}

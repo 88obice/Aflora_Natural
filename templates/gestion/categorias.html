@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Categorías — Gestión{% endblock %}
+{% block extra_css %}
+<style>
+    .gestion-nav { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:0.8rem 1.2rem; margin-bottom:2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
+    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; padding-bottom:2px; border-bottom:2px solid transparent; }
+    .gestion-nav a:hover, .gestion-nav a.active { color:var(--terracotta); border-bottom-color:var(--terracotta); }
+    .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
+    .cat-table th { font-size:0.75rem; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); font-weight:400; border-color:var(--rose-light); }
+    .cat-table td { font-size:0.88rem; border-color:var(--rose-light); vertical-align:middle; }
+    .cat-table img { width:50px; height:50px; object-fit:cover; border-radius:3px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="gestion-nav">
+    <span class="nav-title">Gestión</span>
+    <a href="{% url 'gestion:dashboard' %}">Dashboard</a>
+    <a href="{% url 'gestion:pedidos' %}">Pedidos</a>
+    <a href="{% url 'gestion:productos' %}">Productos</a>
+    <a href="{% url 'gestion:categorias_lista' %}" class="active">Categorías</a>
+    <a href="{% url 'gestion:resenas_lista' %}">Reseñas</a>
+    <a href="{% url 'gestion:newsletter_lista' %}">Newsletter</a>
+    <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Categorías</h2>
+        <small class="text-muted">Cada producto pertenece a una categoría. El "orden" decide cómo se muestran en el sitio.</small>
+    </div>
+    <a href="{% url 'gestion:categoria_crear' %}" class="btn btn-primary btn-sm">+ Nueva categoría</a>
+</div>
+
+<div class="table-responsive">
+    <table class="table cat-table">
+        <thead>
+            <tr><th></th><th>Nombre</th><th>Slug (URL)</th><th class="text-end">Productos</th><th class="text-end">Orden</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for c in categorias %}
+        <tr>
+            <td>{% if c.imagen %}<img src="{{ c.imagen.url }}" alt="">{% endif %}</td>
+            <td style="font-family:'Playfair Display',serif;">{{ c.nombre }}</td>
+            <td class="text-muted small"><code>{{ c.slug }}</code></td>
+            <td class="text-end">{{ c.total_productos }}</td>
+            <td class="text-end">{{ c.orden }}</td>
+            <td class="text-end">
+                <a href="{% url 'gestion:categoria_editar' c.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a>
+                <a href="{% url 'gestion:categoria_eliminar' c.pk %}" class="btn btn-outline-secondary btn-sm">Eliminar</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-muted fst-italic text-center py-4">
+            Aún no hay categorías. <a href="{% url 'gestion:categoria_crear' %}">Crear la primera</a>
+            (es necesaria para poder agregar productos).
+        </td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

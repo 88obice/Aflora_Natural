@@ -1,30 +1,31 @@
 {% extends 'base.html' %}
 {% load aflora_filters %}
 
-{% block title %}Pedidos — Gestión Aflora Natural{% endblock %}
+{% block title %}Pedidos — Gestión{% endblock %}
 
 {% block extra_css %}
 <style>
-    .gestion-nav {
-        background: #fff; border: 1px solid var(--rose-light); border-radius: 4px;
-        padding: 0.8rem 1.2rem; margin-bottom: 2rem;
-        display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;
-    }
-    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; letter-spacing:0.04em; padding-bottom:2px; border-bottom:2px solid transparent; transition: color 0.2s, border-color 0.2s; }
+    .gestion-nav { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:0.8rem 1.2rem; margin-bottom:2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
+    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; padding-bottom:2px; border-bottom:2px solid transparent; }
     .gestion-nav a:hover, .gestion-nav a.active { color:var(--terracotta); border-bottom-color:var(--terracotta); }
     .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
 
-    .filter-bar { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1.5rem; }
-    .filter-bar .btn { font-size:0.8rem; padding:0.35rem 1rem; }
-    .filter-bar .btn.active { background-color:var(--terracotta); border-color:var(--terracotta); color:#fff; }
+    .filter-pills { display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1rem; }
+    .filter-pills a { font-size:0.78rem; padding:0.3rem 0.85rem; border:1px solid var(--rose-light); border-radius:20px; color:var(--text-muted); text-decoration:none; }
+    .filter-pills a:hover { color:var(--terracotta); border-color:var(--terracotta); }
+    .filter-pills a.active { background:var(--terracotta); color:#fff; border-color:var(--terracotta); }
 
-    .orders-table th { font-size:0.75rem; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); font-weight:400; border-color:var(--rose-light); }
-    .orders-table td { font-size:0.88rem; border-color:var(--rose-light); vertical-align:middle; }
+    .pedidos-table { font-size:0.88rem; }
+    .pedidos-table th { font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); font-weight:400; border-color:var(--rose-light); }
+    .pedidos-table td { border-color:var(--rose-light); vertical-align:middle; }
 
-    .estado-badge { display:inline-block; padding:0.25em 0.8em; border-radius:2px; font-size:0.75rem; letter-spacing:0.05em; background-color:var(--rose-light); color:var(--terracotta); }
-    .estado-badge.enviado   { background-color:#d4edda; color:#155724; }
-    .estado-badge.entregado { background-color:#cce5ff; color:#004085; }
-    .estado-badge.cancelado { background-color:#f8d7da; color:#721c24; }
+    .estado-pill { display:inline-block; padding:0.18em 0.7em; border-radius:20px; font-size:0.72rem; }
+    .estado-pendiente   { background:#fff3cd; color:#856404; }
+    .estado-confirmado  { background:#d1ecf1; color:#0c5460; }
+    .estado-preparando  { background:#fcefdc; color:#856404; }
+    .estado-enviado     { background:#cce5ff; color:#004085; }
+    .estado-entregado   { background:#d4edda; color:#155724; }
+    .estado-cancelado   { background:#f8d7da; color:#721c24; }
 </style>
 {% endblock %}
 
@@ -35,53 +36,64 @@
     <a href="{% url 'gestion:dashboard' %}">Dashboard</a>
     <a href="{% url 'gestion:pedidos' %}" class="active">Pedidos</a>
     <a href="{% url 'gestion:productos' %}">Productos</a>
+    <a href="{% url 'gestion:categorias_lista' %}">Categorías</a>
+    <a href="{% url 'gestion:resenas_lista' %}">Reseñas</a>
+    <a href="{% url 'gestion:newsletter_lista' %}">Newsletter</a>
+    <a href="{% url 'gestion:notificaciones_stock' %}">Notif. stock</a>
     <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
 </div>
 
-<h2 class="mb-3">Pedidos</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Pedidos</h2>
+    <a href="{% url 'gestion:exportar_pedidos' %}{% if estado_actual %}?estado={{ estado_actual }}{% endif %}"
+       class="btn btn-outline-primary btn-sm">⇩ Exportar CSV</a>
+</div>
 
-<!-- Filtros por estado -->
-<div class="filter-bar">
-    <a href="{% url 'gestion:pedidos' %}" class="btn btn-outline-secondary {% if not estado_actual %}active{% endif %}">Todos</a>
-    {% for valor, etiqueta in estados %}
-        <a href="?estado={{ valor }}"
-           class="btn btn-outline-secondary {% if estado_actual == valor %}active{% endif %}">
-            {{ etiqueta }}
-        </a>
+<div class="filter-pills">
+    <a href="{% url 'gestion:pedidos' %}" class="{% if not estado_actual %}active{% endif %}">Todos</a>
+    {% for valor, label in estados %}
+    <a href="?estado={{ valor }}" class="{% if estado_actual == valor %}active{% endif %}">{{ label }}</a>
     {% endfor %}
 </div>
 
-{% if pedidos %}
+<form method="get" class="mb-3">
+    {% if estado_actual %}<input type="hidden" name="estado" value="{{ estado_actual }}">{% endif %}
+    <input type="search" name="q" value="{{ q }}" placeholder="Buscar por #ID, cliente, email, código seguimiento..."
+           class="form-control" style="max-width:380px; border-radius:2px; border-color:var(--rose-light);">
+</form>
+
 <div class="table-responsive">
-    <table class="table orders-table">
+    <table class="table pedidos-table">
         <thead>
             <tr>
-                <th>N°</th>
-                <th>Cliente</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-                <th>Total</th>
-                <th></th>
+                <th>#</th><th>Fecha</th><th>Cliente</th><th>Envío</th>
+                <th>Estado</th><th class="text-end">Total</th><th></th>
             </tr>
         </thead>
         <tbody>
-            {% for pedido in pedidos %}
+            {% for p in pedidos %}
             <tr>
-                <td style="color:var(--text-muted);">#{{ pedido.id }}</td>
-                <td>{{ pedido.usuario.username }}</td>
-                <td>{{ pedido.creado|date:"d/m/Y H:i" }}</td>
-                <td><span class="estado-badge {{ pedido.estado }}">{{ pedido.get_estado_display }}</span></td>
-                <td class="precio">{{ pedido.total|clp }}</td>
-                <td><a href="{% url 'gestion:detalle_pedido' pedido.pk %}" class="btn btn-outline-primary btn-sm">Ver</a></td>
+                <td><a href="{% url 'gestion:detalle_pedido' p.pk %}" style="color:var(--terracotta); text-decoration:none;"><strong>#{{ p.pk }}</strong></a></td>
+                <td class="text-muted">{{ p.creado|date:"d M Y H:i" }}</td>
+                <td>
+                    {{ p.nombre_destinatario }}
+                    {% if p.es_invitado %}<small class="text-muted d-block">(invitado)</small>{% endif %}
+                </td>
+                <td class="text-muted small">
+                    {% if p.metodo_envio == 'retiro_local' %}Retiro local
+                    {% else %}{{ p.comuna|default:"—" }}{% endif %}
+                </td>
+                <td><span class="estado-pill estado-{{ p.estado }}">{{ p.get_estado_display }}</span></td>
+                <td class="text-end precio">{{ p.total|clp }}</td>
+                <td class="text-end">
+                    <a href="{% url 'gestion:detalle_pedido' p.pk %}" class="btn btn-outline-secondary btn-sm">Ver</a>
+                </td>
             </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-muted fst-italic text-center py-4">No hay pedidos con este filtro.</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
-{% else %}
-<div class="text-center py-5">
-    <p class="text-muted fst-italic">No hay pedidos con este estado.</p>
-</div>
-{% endif %}
 
 {% endblock %}
