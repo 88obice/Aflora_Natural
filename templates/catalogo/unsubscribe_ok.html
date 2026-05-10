@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Baja de newsletter — Aflora Natural{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-6">
+        <div class="card p-4 text-center" style="background:#fff; border-color:var(--rose-light);">
+            {% if invalido %}
+                <h3 style="font-size:1.3rem;">Link no válido</h3>
+                <p class="text-muted">Este link de baja no es correcto o ya expiró.</p>
+            {% elif ya_dado_de_baja %}
+                <h3 style="font-size:1.3rem;">Ya estabas dado de baja</h3>
+                <p class="text-muted">{{ email }} no recibe nuestros emails.</p>
+            {% else %}
+                <h3 style="font-size:1.3rem;">Listo, te dimos de baja</h3>
+                <p class="text-muted">Ya no recibirás más emails del newsletter en {{ email }}.</p>
+                <p class="text-muted small">Si fue un error, suscríbete de nuevo en el footer del sitio.</p>
+            {% endif %}
+            <a href="{% url 'catalogo:inicio' %}" class="btn btn-outline-primary mt-3">Ir al inicio</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

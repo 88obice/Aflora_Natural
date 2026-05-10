@@ -15,19 +15,13 @@
         overflow: hidden;
     }
     .hero::before {
-        content: '';
-        position: absolute;
-        top: -60px; right: -60px;
-        width: 240px; height: 240px;
-        border-radius: 50%;
+        content: ''; position: absolute; top: -60px; right: -60px;
+        width: 240px; height: 240px; border-radius: 50%;
         background: rgba(201, 169, 154, 0.18);
     }
     .hero::after {
-        content: '';
-        position: absolute;
-        bottom: -40px; left: -40px;
-        width: 180px; height: 180px;
-        border-radius: 50%;
+        content: ''; position: absolute; bottom: -40px; left: -40px;
+        width: 180px; height: 180px; border-radius: 50%;
         background: rgba(196, 147, 63, 0.1);
     }
     .hero h1 {
@@ -37,85 +31,37 @@
         position: relative; z-index: 1;
     }
     .hero p {
-        color: var(--text-muted);
-        font-size: 1.05rem;
-        max-width: 480px;
-        margin: 0 auto 2rem;
+        color: var(--text-muted); font-size: 1.05rem;
+        max-width: 480px; margin: 0 auto 2rem;
         position: relative; z-index: 1;
     }
-    .hero .btn {
-        position: relative; z-index: 1;
-        padding: 0.75rem 2.5rem;
-        font-size: 0.9rem;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-    }
-
-    .section-title {
-        font-family: 'Playfair Display', serif;
-        font-size: 1.6rem;
-        color: var(--text);
-        margin-bottom: 0.3rem;
-    }
-    .section-subtitle {
-        color: var(--text-muted);
-        font-size: 0.88rem;
-        margin-bottom: 1.8rem;
-    }
-
+    .hero .btn { position: relative; z-index: 1; padding: 0.75rem 2.5rem; font-size: 0.9rem; letter-spacing: 0.1em; text-transform: uppercase; }
+    .section-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--text); margin-bottom: 0.3rem; }
+    .section-subtitle { color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.8rem; }
     .product-card .card-body { padding: 1.1rem 1.2rem; }
-    .product-card .card-title {
-        font-family: 'Playfair Display', serif;
-        font-size: 1rem;
-        margin-bottom: 0.3rem;
-    }
-    .product-card .card-img-top {
-        height: 210px;
-        object-fit: cover;
-    }
+    .product-card .card-title { font-family: 'Playfair Display', serif; font-size: 1rem; margin-bottom: 0.3rem; }
+    .product-card .card-img-top { height: 210px; object-fit: cover; }
     .product-card .placeholder-img {
-        height: 210px;
-        background: linear-gradient(135deg, #F0E8DE 0%, #EDD9D1 100%);
+        height: 210px; background: linear-gradient(135deg, #F0E8DE 0%, #EDD9D1 100%);
         display: flex; align-items: center; justify-content: center;
-        color: var(--text-muted);
-        font-size: 2rem;
+        color: var(--text-muted); font-size: 2rem;
     }
-
-    .features {
-        background-color: #fff;
-        border: 1px solid var(--rose-light);
-        border-radius: 4px;
-        padding: 2.5rem 1.5rem;
-        margin-top: 3.5rem;
-        text-align: center;
-    }
-    .feature-icon {
-        font-size: 2rem;
-        margin-bottom: 0.7rem;
-    }
-    .feature-title {
-        font-family: 'Playfair Display', serif;
-        font-size: 1rem;
-        color: var(--terracotta);
-        margin-bottom: 0.4rem;
-    }
-    .feature-text {
-        font-size: 0.85rem;
-        color: var(--text-muted);
-    }
+    .features { background-color: #fff; border: 1px solid var(--rose-light); border-radius: 4px; padding: 2.5rem 1.5rem; margin-top: 3.5rem; text-align: center; }
+    .feature-icon { font-size: 2rem; margin-bottom: 0.7rem; }
+    .feature-title { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--terracotta); margin-bottom: 0.4rem; }
+    .feature-text { font-size: 0.85rem; color: var(--text-muted); }
+    .rating-stars { color: var(--amber); font-size: 0.85rem; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Hero -->
 <div class="hero">
     <h1>Bienvenida a Aflora Natural</h1>
     <p>Velas aromáticas, homesprays y difusores artesanales hechos con ingredientes naturales. Cada aroma, una experiencia.</p>
     <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary">Ver Catálogo</a>
 </div>
 
-<!-- Productos destacados -->
 <div class="d-flex justify-content-between align-items-end mb-1">
     <div>
         <div class="section-title">Productos destacados</div>
@@ -135,11 +81,19 @@
             {% endif %}
             <div class="card-body d-flex flex-column">
                 <div class="card-title">{{ producto.nombre }}</div>
-                <div class="precio mb-2">{{ producto.precio|clp }}</div>
-                {% if producto.stock == 0 %}
+                <div class="precio mb-2">
+                    {% if producto.variantes.exists %}desde {% endif %}{{ producto.precio_desde|clp }}
+                </div>
+                {% if producto.rating_promedio %}
+                <div class="rating-stars mb-2">
+                    {% for i in "12345" %}{% if forloop.counter <= producto.rating_promedio %}★{% else %}☆{% endif %}{% endfor %}
+                    <small class="text-muted">({{ producto.total_resenas }})</small>
+                </div>
+                {% endif %}
+                {% if producto.agotado %}
                     <span class="badge-agotado d-inline-block mb-2">Sin stock</span>
                 {% endif %}
-                <a href="{% url 'catalogo:detalle_producto' producto.pk %}" class="btn btn-outline-primary btn-sm mt-auto">Ver más</a>
+                <a href="{{ producto.get_absolute_url }}" class="btn btn-outline-primary btn-sm mt-auto">Ver más</a>
             </div>
         </div>
     </div>
@@ -150,7 +104,6 @@
     {% endfor %}
 </div>
 
-<!-- Propuesta de valor -->
 <div class="features">
     <div class="row g-4">
         <div class="col-md-4">
@@ -171,7 +124,6 @@
     </div>
 </div>
 
-<!-- Quiénes somos -->
 <div class="row align-items-center mt-5 g-5">
     <div class="col-md-6">
         <div style="background:var(--cream-dark); border-radius:4px; height:320px; display:flex; align-items:center; justify-content:center; color:var(--rose); font-size:4rem;">
@@ -187,7 +139,7 @@
         <p style="color:var(--text-muted); line-height:1.8; font-size:0.95rem; margin-bottom:2rem;">
             Trabajamos con ingredientes naturales, en pequeños lotes artesanales, desde Santiago de Chile para todo el país.
         </p>
-        <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-outline-primary">Conocer productos</a>
+        <a href="{% url 'catalogo:sobre_nosotros' %}" class="btn btn-outline-primary">Conocer más</a>
     </div>
 </div>
 

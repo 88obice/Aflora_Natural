@@ -1,188 +1,363 @@
+import json
+import logging
 import mercadopago
+from decimal import Decimal
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import send_mail, mail_admins
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+
 from .models import Pedido, ItemPedido
+from .envios import calcular_costo_envio, comunas_disponibles
 from carrito.models import Carrito, ItemCarrito
+from carrito.views import get_or_create_carrito
+
+logger = logging.getLogger('aflora.pedidos')
 
 
-def _enviar_confirmacion(pedido):
-    """Envía email de confirmación al cliente cuando el pago es exitoso."""
-    if not pedido.usuario.email:
+# --- Helpers --------------------------------------------------------------
+
+def _enviar_confirmacion_cliente(pedido):
+    if not pedido.email_destinatario:
         return
+    items_texto = '\n'.join(
+        '  - {} x{}: ${:,}'.format(
+            it.nombre_mostrar(), it.cantidad, int(it.precio_unitario * it.cantidad)
+        ).replace(',', '.')
+        for it in pedido.items.all()
+    )
+    direccion = pedido.direccion_formateada()
+    mensaje = """Hola {nombre},
+
+Tu pedido #{pid} fue confirmado.
+
+{items}
+
+Subtotal: ${sub:,}
+Envio:    ${env:,}
+Total:    ${tot:,}
+
+Entrega: {dir}
+Telefono: {tel}
+
+Nos contactamos contigo pronto para coordinar.
+Si tienes dudas: WhatsApp +56 9 8956 0937
+
+-- Aflora Natural
+""".format(
+        nombre=pedido.nombre_destinatario,
+        pid=pedido.pk,
+        items=items_texto,
+        sub=int(pedido.subtotal),
+        env=int(pedido.costo_envio),
+        tot=int(pedido.total),
+        dir=direccion,
+        tel=pedido.telefono,
+    ).replace(',', '.')
+
     try:
-        items_texto = '\n'.join(
-            f"  - {item.producto.nombre} x{item.cantidad}: ${int(item.precio_unitario * item.cantidad):,}".replace(',', '.')
-            for item in pedido.items.all()
-        )
-        mensaje = f"""Hola {pedido.usuario.username},
-
-¡Tu pedido #{pedido.pk} ha sido confirmado! 🌿
-
-{items_texto}
-
-Total: ${int(pedido.total):,}
-
-Dirección de entrega: {pedido.direccion_entrega}
-Teléfono: {pedido.telefono}
-
-Nos contactaremos contigo pronto para coordinar la entrega.
-
-Si tienes dudas, escríbenos por WhatsApp: +56 9 8956 0937
-
-— Aflora Natural
-""".replace(',', '.')
-
         send_mail(
-            subject=f'Pedido #{pedido.pk} confirmado — Aflora Natural',
+            subject='Pedido #{} confirmado -- Aflora Natural'.format(pedido.pk),
             message=mensaje,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[pedido.usuario.email],
-            fail_silently=True,  # no rompe el flujo si el email falla
+            recipient_list=[pedido.email_destinatario],
+            fail_silently=True,
         )
     except Exception:
         pass
 
 
-def _crear_preferencia_mp(pedido, request):
-    """Crea una preferencia de pago en Mercado Pago y devuelve la URL de checkout."""
-    sdk = mercadopago.SDK(settings.MP_ACCESS_TOKEN)
+def _notificar_admin_nuevo_pedido(pedido):
+    """Notifica al staff por email cuando entra un pedido confirmado."""
+    items_texto = '\n'.join(
+        '  - {} x{}'.format(it.nombre_mostrar(), it.cantidad)
+        for it in pedido.items.all()
+    )
+    mensaje = """Nuevo pedido #{pid}
 
-    base_url = request.build_absolute_uri('/')[:-1]  # ej: http://127.0.0.1:8000
+Cliente: {nombre} ({email})
+Telefono: {tel}
+Metodo: {met}
+Direccion: {dir}
+
+Items:
+{items}
+
+Subtotal: ${sub:,}
+Envio:    ${env:,}
+TOTAL:    ${tot:,}
+
+Ver en gestion: /gestion/pedidos/{pid}/
+""".format(
+        pid=pedido.pk,
+        nombre=pedido.nombre_destinatario,
+        email=pedido.email_destinatario or 'sin email',
+        tel=pedido.telefono,
+        met=pedido.get_metodo_envio_display(),
+        dir=pedido.direccion_formateada(),
+        items=items_texto,
+        sub=int(pedido.subtotal),
+        env=int(pedido.costo_envio),
+        tot=int(pedido.total),
+    ).replace(',', '.')
+
+    # mail_admins respeta settings.ADMINS. Si esta vacio, hacemos fallback al EMAIL_HOST_USER
+    try:
+        if getattr(settings, 'ADMINS', None):
+            mail_admins(
+                subject='Nuevo pedido #{}'.format(pedido.pk),
+                message=mensaje, fail_silently=True,
+            )
+        elif settings.DEFAULT_FROM_EMAIL:
+            send_mail(
+                subject='Nuevo pedido #{} -- Aflora Natural'.format(pedido.pk),
+                message=mensaje,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.DEFAULT_FROM_EMAIL],
+                fail_silently=True,
+            )
+    except Exception:
+        pass
+
+
+def _crear_preferencia_mp(pedido, request):
+    sdk = mercadopago.SDK(settings.MP_ACCESS_TOKEN)
+    base_url = request.build_absolute_uri('/')[:-1]
 
     items = []
-    for item in pedido.items.all():
+    for it in pedido.items.all():
         items.append({
-            "title": item.producto.nombre,
-            "quantity": item.cantidad,
-            "unit_price": float(item.precio_unitario),
-            "currency_id": "CLP",
+            'title': it.nombre_mostrar()[:240],
+            'quantity': it.cantidad,
+            'unit_price': float(it.precio_unitario),
+            'currency_id': 'CLP',
+        })
+    if pedido.costo_envio and pedido.costo_envio > 0:
+        items.append({
+            'title': 'Envio',
+            'quantity': 1,
+            'unit_price': float(pedido.costo_envio),
+            'currency_id': 'CLP',
         })
 
     preference_data = {
-        "items": items,
-        "back_urls": {
-            "success": f"{base_url}/pedidos/pago/exitoso/",
-            "failure": f"{base_url}/pedidos/pago/fallido/",
-            "pending": f"{base_url}/pedidos/pago/pendiente/",
+        'items': items,
+        'back_urls': {
+            'success': '{}/pedidos/pago/exitoso/'.format(base_url),
+            'failure': '{}/pedidos/pago/fallido/'.format(base_url),
+            'pending': '{}/pedidos/pago/pendiente/'.format(base_url),
         },
-        # auto_return hace que MP redirija automáticamente sin mostrar el botón
-        # "Volver al comercio". Solo aplica para pagos aprobados.
-        "auto_return": "approved",
-        "external_reference": str(pedido.id),
-        "statement_descriptor": "Aflora Natural",
+        'auto_return': 'approved',
+        'external_reference': str(pedido.id),
+        'statement_descriptor': 'Aflora Natural',
+        'notification_url': '{}/pedidos/webhook/mp/'.format(base_url),
     }
 
     response = sdk.preference().create(preference_data)
-    preference = response["response"]
-    # sandbox_init_point para pruebas, init_point para producción
-    return preference.get("sandbox_init_point") or preference.get("init_point")
+    pref = response.get('response', {})
+    return pref.get('init_point') or pref.get('sandbox_init_point')
 
 
-@login_required
+def _confirmar_pedido(pedido, mp_payment_id='', mp_status=''):
+    """
+    Confirma el pedido: descuenta stock, marca confirmado, manda emails.
+    Idempotente: si ya esta confirmado, no hace nada.
+    """
+    with transaction.atomic():
+        p = Pedido.objects.select_for_update().get(pk=pedido.pk)
+        if p.estado != 'pendiente':
+            return p
+        for item in p.items.select_related('producto', 'variante').all():
+            if item.variante:
+                from catalogo.models import Variante
+                v = Variante.objects.select_for_update().get(pk=item.variante.pk)
+                if item.cantidad > v.stock:
+                    p.estado = 'cancelado'
+                    p.save(update_fields=['estado'])
+                    return p
+                v.stock -= item.cantidad
+                v.save(update_fields=['stock'])
+            else:
+                from catalogo.models import Producto
+                pr = Producto.objects.select_for_update().get(pk=item.producto.pk)
+                if item.cantidad > pr.stock:
+                    p.estado = 'cancelado'
+                    p.save(update_fields=['estado'])
+                    return p
+                pr.stock -= item.cantidad
+                pr.save(update_fields=['stock'])
+        p.estado = 'confirmado'
+        if mp_payment_id:
+            p.mp_payment_id = mp_payment_id
+        if mp_status:
+            p.mp_status = mp_status
+        p.save()
+
+    _enviar_confirmacion_cliente(p)
+    _notificar_admin_nuevo_pedido(p)
+    return p
+
+
+# --- Checkout -------------------------------------------------------------
+
 def crear_pedido(request):
-    carrito = get_object_or_404(Carrito, usuario=request.user)
-    items = carrito.items.all()
+    """Acepta usuarios logueados y checkout invitado."""
+    carrito = get_or_create_carrito(request)
+    items = carrito.items.select_related('producto', 'variante').all()
     if not items:
         return redirect('carrito:ver_carrito')
 
-    if request.method == 'POST':
-        # Verificar stock antes de crear nada
-        for item in items:
-            if item.cantidad > item.producto.stock:
-                messages.error(
-                    request,
-                    f'Stock insuficiente para "{item.producto.nombre}". '
-                    f'Pediste {item.cantidad} pero hay {item.producto.stock} disponibles.'
+    # Pre-validar stock
+    for item in items:
+        if item.cantidad > item.stock_disponible:
+            messages.error(
+                request,
+                'Stock insuficiente para "{}". Pediste {} pero hay {}.'.format(
+                    item.producto.nombre, item.cantidad, item.stock_disponible
                 )
-                return redirect('carrito:ver_carrito')
+            )
+            return redirect('carrito:ver_carrito')
+
+    if request.method == 'POST':
+        # Email obligatorio (logueado: tomamos del user; invitado: del form)
+        if request.user.is_authenticated:
+            email = request.user.email or request.POST.get('email', '').strip()
+            nombre = request.user.get_full_name() or request.user.username
+        else:
+            email = request.POST.get('email', '').strip()
+            nombre = request.POST.get('nombre', '').strip()
+            if not email or not nombre:
+                messages.error(request, 'Necesitamos tu nombre y email.')
+                return redirect('pedidos:crear_pedido')
+
+        metodo = request.POST.get('metodo_envio', 'envio_domicilio')
+        telefono = request.POST.get('telefono', '').strip()
+        if not telefono:
+            messages.error(request, 'Necesitamos un telefono de contacto.')
+            return redirect('pedidos:crear_pedido')
+
+        calle = depto = comuna = referencia = ''
+        region = 'Region Metropolitana'
+        if metodo == 'envio_domicilio':
+            calle = request.POST.get('calle_numero', '').strip()
+            depto = request.POST.get('depto', '').strip()
+            comuna = request.POST.get('comuna', '').strip()
+            region = request.POST.get('region', 'Region Metropolitana').strip() or 'Region Metropolitana'
+            referencia = request.POST.get('referencia', '').strip()
+            if not calle or not comuna:
+                messages.error(request, 'Necesitamos calle y comuna para el envio.')
+                return redirect('pedidos:crear_pedido')
+
+        subtotal = sum(i.subtotal() for i in items)
+        costo_envio = calcular_costo_envio(metodo, comuna, region, subtotal)
+        total = subtotal + costo_envio
 
         try:
             with transaction.atomic():
                 pedido = Pedido.objects.create(
-                    usuario=request.user,
-                    direccion_entrega=request.POST['direccion'],
-                    telefono=request.POST['telefono'],
-                    total=carrito.total()
+                    usuario=request.user if request.user.is_authenticated else None,
+                    nombre_cliente=nombre if not request.user.is_authenticated else '',
+                    email_cliente=email if not request.user.is_authenticated else '',
+                    metodo_envio=metodo,
+                    calle_numero=calle, depto=depto,
+                    comuna=comuna, region=region, referencia=referencia,
+                    telefono=telefono,
+                    nota_cliente=request.POST.get('nota', '').strip()[:500],
+                    subtotal=subtotal,
+                    costo_envio=costo_envio,
+                    total=total,
                 )
                 for item in items:
+                    nombre_snap = item.producto.nombre
+                    if item.variante:
+                        nombre_snap += ' ({})'.format(item.variante.nombre)
                     ItemPedido.objects.create(
                         pedido=pedido,
                         producto=item.producto,
+                        variante=item.variante,
                         cantidad=item.cantidad,
-                        precio_unitario=item.producto.precio
+                        precio_unitario=item.precio_unitario,
+                        nombre_snapshot=nombre_snap,
                     )
+                # Vaciar el carrito
                 carrito.items.all().delete()
         except Exception as e:
-            messages.error(request, 'Error al crear el pedido. Intenta de nuevo.')
+            logger.exception('Error al crear pedido para %s', email)
+            messages.error(request, 'Error al crear el pedido: {}'.format(str(e)[:120]))
             return redirect('carrito:ver_carrito')
 
-        # Redirigir a Mercado Pago
+        logger.info('Pedido #%s creado (subtotal=%s envio=%s total=%s)',
+                    pedido.pk, subtotal, costo_envio, total)
+
+        # Redirigir a MP
         try:
             checkout_url = _crear_preferencia_mp(pedido, request)
             if checkout_url:
                 return redirect(checkout_url)
         except Exception:
-            messages.warning(request, 'Pedido creado. Hubo un problema al conectar con el sistema de pago.')
+            logger.exception('Error creando preferencia MP para pedido #%s', pedido.pk)
+            messages.warning(request, 'Pedido creado. Hubo un problema al conectar con el sistema de pago. Te contactaremos.')
 
         return redirect('pedidos:detalle_pedido', pk=pedido.pk)
 
-    return render(request, 'pedidos/crear_pedido.html', {'carrito': carrito})
+    # GET: render formulario
+    perfil = None
+    direccion_predet = None
+    if request.user.is_authenticated:
+        perfil = getattr(request.user, 'perfil', None)
+        direccion_predet = request.user.direcciones.filter(es_predeterminada=True).first()
+
+    subtotal_actual = sum(i.subtotal() for i in items)
+
+    return render(request, 'pedidos/crear_pedido.html', {
+        'carrito': carrito,
+        'items': items,
+        'subtotal': subtotal_actual,
+        'comunas': comunas_disponibles(),
+        'perfil': perfil,
+        'direccion_predet': direccion_predet,
+        'umbral_envio_gratis': 40000,
+    })
 
 
 @login_required
 def historial_pedidos(request):
-    pedidos = Pedido.objects.filter(usuario=request.user).order_by('-creado')
+    pedidos = Pedido.objects.filter(usuario=request.user).order_by('-creado').prefetch_related('items')
     return render(request, 'pedidos/historial.html', {'pedidos': pedidos})
 
 
-@login_required
 def detalle_pedido(request, pk):
-    pedido = get_object_or_404(Pedido, pk=pk, usuario=request.user)
+    pedido = get_object_or_404(Pedido.objects.prefetch_related('items__producto', 'items__variante'), pk=pk)
+    # Solo dueno o staff (los invitados pueden ver via link directo solo si tienen el ID)
+    if request.user.is_authenticated and pedido.usuario and pedido.usuario != request.user and not request.user.is_staff:
+        return redirect('catalogo:inicio')
     return render(request, 'pedidos/detalle_pedido.html', {'pedido': pedido})
 
 
-# ── Callbacks de Mercado Pago ──────────────────────────────────────────────
+# --- Callbacks de Mercado Pago (back_urls) -------------------------------
 
 def pago_exitoso(request):
     pedido_id = request.GET.get('external_reference')
+    payment_id = request.GET.get('payment_id', '') or request.GET.get('collection_id', '')
+    status = request.GET.get('status', '') or request.GET.get('collection_status', '')
     if pedido_id:
         try:
-            with transaction.atomic():
-                # select_for_update en el pedido evita que dos requests simultáneos
-                # (MP puede reintentar el redirect) procesen el mismo pedido dos veces.
-                pedido = Pedido.objects.select_for_update().get(pk=pedido_id)
-                if pedido.estado == 'pendiente':
-                    # Descontar stock al confirmar el pago
-                    for item in pedido.items.all():
-                        producto = item.producto.__class__.objects.select_for_update().get(pk=item.producto.pk)
-                        if item.cantidad > producto.stock:
-                            # Stock insuficiente al momento de confirmar — caso extremo
-                            pedido.estado = 'cancelado'
-                            pedido.save()
-                            return render(request, 'pedidos/pago_resultado.html', {
-                                'titulo': 'Stock insuficiente',
-                                'mensaje': f'Lo sentimos, "{producto.nombre}" se agotó mientras procesabas el pago. Contáctanos por WhatsApp.',
-                                'tipo': 'error',
-                            })
-                        producto.stock -= item.cantidad
-                        if producto.stock == 0:
-                            producto.disponible = False
-                        producto.save()
-                    pedido.estado = 'confirmado'
-                    pedido.save()
-                    _enviar_confirmacion(pedido)
+            pedido = Pedido.objects.get(pk=pedido_id)
+            _confirmar_pedido(pedido, mp_payment_id=payment_id, mp_status=status)
             if request.user.is_authenticated and pedido.usuario == request.user:
-                messages.success(request, '¡Pago recibido! Tu pedido está confirmado.')
+                messages.success(request, 'Pago recibido. Tu pedido esta confirmado.')
                 return redirect('pedidos:detalle_pedido', pk=pedido.pk)
         except Pedido.DoesNotExist:
             pass
     return render(request, 'pedidos/pago_resultado.html', {
-        'titulo': '¡Pago exitoso!',
-        'mensaje': 'Tu pedido fue confirmado. Te contactaremos pronto para coordinar la entrega.',
+        'titulo': 'Pago exitoso',
+        'mensaje': 'Tu pedido fue confirmado. Te contactaremos pronto.',
         'tipo': 'exito',
     })
 
@@ -192,13 +367,14 @@ def pago_fallido(request):
     if pedido_id:
         try:
             pedido = Pedido.objects.get(pk=pedido_id)
-            pedido.estado = 'cancelado'
-            pedido.save()
+            if pedido.estado == 'pendiente':
+                pedido.estado = 'cancelado'
+                pedido.save(update_fields=['estado'])
         except Pedido.DoesNotExist:
             pass
     return render(request, 'pedidos/pago_resultado.html', {
         'titulo': 'Pago no completado',
-        'mensaje': 'El pago no pudo procesarse. Puedes intentarlo nuevamente o contactarnos por WhatsApp.',
+        'mensaje': 'El pago no pudo procesarse. Puedes intentarlo de nuevo o contactarnos por WhatsApp.',
         'tipo': 'error',
     })
 
@@ -206,6 +382,69 @@ def pago_fallido(request):
 def pago_pendiente(request):
     return render(request, 'pedidos/pago_resultado.html', {
         'titulo': 'Pago pendiente',
-        'mensaje': 'Tu pago está siendo procesado. Te notificaremos cuando se confirme.',
+        'mensaje': 'Tu pago esta siendo procesado. Te avisaremos cuando se confirme.',
         'tipo': 'pendiente',
     })
+
+
+# --- Webhook de Mercado Pago ---------------------------------------------
+
+@csrf_exempt
+@require_POST
+def webhook_mp(request):
+    """
+    Webhook de notificaciones de Mercado Pago.
+    MP envia POST con info del pago. Nosotros consultamos su API para verificar.
+    """
+    try:
+        data = json.loads(request.body.decode('utf-8') or '{}')
+    except (ValueError, UnicodeDecodeError):
+        # MP a veces manda querystring -- aceptamos ambos
+        data = {'type': request.GET.get('type', ''), 'data': {'id': request.GET.get('id', '')}}
+
+    tipo = data.get('type') or data.get('topic') or ''
+    payment_id = ''
+    if tipo == 'payment':
+        payment_id = (data.get('data') or {}).get('id') or data.get('resource')
+    elif tipo == 'merchant_order':
+        # Soporte basico: ignorar por ahora, MP suele mandar tambien 'payment'
+        return HttpResponse(status=200)
+
+    if not payment_id:
+        return HttpResponse(status=200)
+
+    logger.info('Webhook MP recibido: tipo=%s payment_id=%s', tipo, payment_id)
+
+    try:
+        sdk = mercadopago.SDK(settings.MP_ACCESS_TOKEN)
+        pago = sdk.payment().get(payment_id).get('response', {})
+    except Exception:
+        logger.exception('Webhook MP: error consultando payment %s', payment_id)
+        return HttpResponse(status=200)
+
+    estado_mp = pago.get('status', '')
+    external_reference = pago.get('external_reference')
+    if not external_reference:
+        logger.warning('Webhook MP sin external_reference: payment_id=%s', payment_id)
+        return HttpResponse(status=200)
+
+    try:
+        pedido = Pedido.objects.get(pk=external_reference)
+    except Pedido.DoesNotExist:
+        logger.error('Webhook MP: pedido #%s no existe (payment_id=%s)', external_reference, payment_id)
+        return HttpResponse(status=200)
+
+    if estado_mp == 'approved':
+        logger.info('Webhook MP confirmando pedido #%s (payment %s)', pedido.pk, payment_id)
+        _confirmar_pedido(pedido, mp_payment_id=str(payment_id), mp_status=estado_mp)
+    elif estado_mp in ('rejected', 'cancelled'):
+        logger.info('Webhook MP rechazo pedido #%s estado=%s', pedido.pk, estado_mp)
+        if pedido.estado == 'pendiente':
+            pedido.estado = 'cancelado'
+            pedido.mp_status = estado_mp
+            pedido.mp_payment_id = str(payment_id)
+            pedido.save(update_fields=['estado', 'mp_status', 'mp_payment_id'])
+    else:
+        logger.info('Webhook MP estado no manejado: %s pedido #%s', estado_mp, pedido.pk)
+
+    return HttpResponse(status=200)

@@ -1,83 +1,213 @@
 {% extends 'base.html' %}
+{% load aflora_filters %}
 
 {% block title %}Finalizar compra — Aflora Natural{% endblock %}
 
 {% block extra_css %}
 <style>
-    .page-header { padding: 1.5rem 0 1.2rem; border-bottom: 1px solid var(--rose-light); margin-bottom: 2rem; }
-    .section-label {
-        font-family: 'Playfair Display', serif;
-        font-size: 1.15rem;
-        margin-bottom: 1.2rem;
-    }
-    .order-table td { border-color: var(--rose-light); font-size: 0.9rem; }
-    .order-total { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--terracotta); }
-    .form-label { font-size: 0.85rem; color: var(--text-muted); letter-spacing: 0.04em; }
-    .form-control {
-        border-color: var(--rose-light);
-        border-radius: 2px;
-        font-size: 0.9rem;
-    }
-    .form-control:focus {
-        border-color: var(--terracotta);
-        box-shadow: 0 0 0 0.15rem rgba(139, 94, 60, 0.15);
-    }
-    .checkout-panel {
-        background: #fff;
-        border: 1px solid var(--rose-light);
-        border-radius: 4px;
-        padding: 1.8rem;
-    }
+    .checkout-section { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1.8rem; margin-bottom:1.5rem; }
+    .checkout-section h5 { font-size:1.05rem; margin-bottom:1.2rem; }
+    .form-control, .form-select { border-radius:2px; border-color: var(--rose-light); font-size:0.92rem; }
+    .form-control:focus, .form-select:focus { border-color: var(--terracotta); box-shadow:none; }
+    .form-label { font-size:0.82rem; color: var(--text-muted); margin-bottom:0.3rem; }
+    .summary-box { background:var(--cream-dark); border-radius:4px; padding:1.5rem; position:sticky; top:1rem; }
+    .summary-row { display:flex; justify-content:space-between; padding:0.4rem 0; font-size:0.9rem; }
+    .summary-total { display:flex; justify-content:space-between; padding:1rem 0 0; border-top:1px solid var(--rose-light); margin-top:0.5rem; font-family:'Playfair Display', serif; font-size:1.3rem; color: var(--terracotta); }
+    .metodo-envio-card { border:1px solid var(--rose-light); border-radius:3px; padding:0.8rem 1rem; cursor:pointer; transition:border-color 0.15s, background-color 0.15s; }
+    .metodo-envio-card.active { border-color: var(--terracotta); background-color: var(--cream-dark); }
+    .metodo-envio-card label { cursor:pointer; margin:0; }
 </style>
 {% endblock %}
 
 {% block content %}
-
-<div class="page-header">
+<div class="page-header" style="padding:1.5rem 0; border-bottom:1px solid var(--rose-light); margin-bottom:2rem;">
     <h2>Finalizar compra</h2>
 </div>
 
-<div class="row">
-    <!-- Resumen del pedido -->
-    <div class="col-md-5">
-        <div class="checkout-panel mb-4 mb-md-0">
-            <div class="section-label">Resumen</div>
-            <table class="table order-table">
-                {% for item in carrito.items.all %}
-                <tr>
-                    <td>{{ item.producto.nombre }}</td>
-                    <td class="text-muted">×{{ item.cantidad }}</td>
-                    <td class="text-end">${{ item.subtotal }}</td>
-                </tr>
+<form method="post" id="checkoutForm">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-lg-7">
+
+            {% if not user.is_authenticated %}
+            <div class="checkout-section">
+                <h5>Tus datos</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nombre completo *</label>
+                        <input type="text" name="nombre" class="form-control" required maxlength="120">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email *</label>
+                        <input type="email" name="email" class="form-control" required>
+                    </div>
+                </div>
+                <small class="text-muted d-block mt-3">¿Ya tienes cuenta? <a href="{% url 'usuarios:login' %}?next={% url 'pedidos:crear_pedido' %}" style="color:var(--terracotta);">Iniciar sesión</a></small>
+            </div>
+            {% endif %}
+
+            <div class="checkout-section">
+                <h5>Método de entrega</h5>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="metodo-envio-card active" data-metodo="envio_domicilio">
+                            <label>
+                                <input type="radio" name="metodo_envio" value="envio_domicilio" checked> Envío a domicilio
+                                <div class="text-muted small mt-1">Llevamos a tu puerta. Costo según comuna.</div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metodo-envio-card" data-metodo="retiro_local">
+                            <label>
+                                <input type="radio" name="metodo_envio" value="retiro_local"> Retiro en local
+                                <div class="text-muted small mt-1">Sin costo. Coordinamos por WhatsApp.</div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <small class="text-muted d-block mt-2">Envío gratis sobre {{ umbral_envio_gratis|clp }}.</small>
+            </div>
+
+            <div class="checkout-section" id="seccionDireccion">
+                <h5>Dirección de entrega</h5>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Calle y número *</label>
+                        <input type="text" name="calle_numero" class="form-control" maxlength="200"
+                               value="{% if direccion_predet %}{{ direccion_predet.calle_numero }}{% endif %}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Depto / oficina</label>
+                        <input type="text" name="depto" class="form-control" maxlength="60"
+                               value="{% if direccion_predet %}{{ direccion_predet.depto }}{% endif %}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Comuna *</label>
+                        <select name="comuna" class="form-select" id="selectComuna">
+                            <option value="">Selecciona...</option>
+                            {% for v, l in comunas %}
+                                <option value="{{ v }}" {% if direccion_predet.comuna == v %}selected{% endif %}>{{ l }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">¿Tu comuna no está? Escríbenos por WhatsApp y vemos.</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Región</label>
+                        <input type="text" name="region" class="form-control"
+                               value="{% if direccion_predet %}{{ direccion_predet.region }}{% else %}Región Metropolitana{% endif %}">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Referencia (opcional)</label>
+                        <input type="text" name="referencia" class="form-control" maxlength="200"
+                               placeholder="Cómo llegar / departamento sin conserje / portón naranja..."
+                               value="{% if direccion_predet %}{{ direccion_predet.referencia }}{% endif %}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="checkout-section">
+                <h5>Contacto</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Teléfono *</label>
+                        <input type="tel" name="telefono" class="form-control" required maxlength="20"
+                               value="{% if perfil.telefono %}{{ perfil.telefono }}{% elif direccion_predet %}{{ direccion_predet.telefono }}{% endif %}"
+                               placeholder="+56 9 ...">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label">Comentario al pedido (opcional)</label>
+                    <textarea name="nota" class="form-control" rows="2" maxlength="500" placeholder="Algo que debamos saber"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="summary-box">
+                <h6 style="font-size:0.95rem; margin-bottom:1rem;">Tu pedido</h6>
+                {% for item in items %}
+                <div class="summary-row">
+                    <span>{{ item.cantidad }}× {{ item.nombre_mostrar }}</span>
+                    <span>{{ item.subtotal|clp }}</span>
+                </div>
                 {% endfor %}
-                <tr>
-                    <td colspan="2" class="fw-bold text-end" style="border-bottom:0;">Total</td>
-                    <td class="text-end order-total" style="border-bottom:0;">${{ carrito.total }}</td>
-                </tr>
-            </table>
-        </div>
-    </div>
+                <hr style="border-color: var(--rose-light); margin:0.8rem 0;">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span id="subtotalMostrar">{{ subtotal|clp }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Envío</span>
+                    <span id="envioMostrar" class="text-muted">Calculando...</span>
+                </div>
+                <div class="summary-total">
+                    <span>Total</span>
+                    <span id="totalMostrar">{{ subtotal|clp }}</span>
+                </div>
 
-    <!-- Formulario de entrega -->
-    <div class="col-md-7">
-        <div class="checkout-panel">
-            <div class="section-label">Datos de entrega</div>
-            <form method="post">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label class="form-label">Dirección de entrega</label>
-                    <textarea name="direccion" class="form-control" rows="3" placeholder="Calle, número, comuna, ciudad" required></textarea>
-                </div>
-                <div class="mb-4">
-                    <label class="form-label">Teléfono de contacto</label>
-                    <input type="text" name="telefono" class="form-control" placeholder="+56 9 XXXX XXXX" required>
-                </div>
-                <button type="submit" class="btn btn-primary w-100" style="padding:0.8rem; font-size:0.9rem; letter-spacing:0.08em; text-transform:uppercase;">
-                    Confirmar pedido
+                <button type="submit" class="btn btn-primary w-100 mt-3" style="padding:0.8rem; letter-spacing:0.08em; text-transform:uppercase; font-size:0.88rem;">
+                    Pagar con Mercado Pago
                 </button>
-            </form>
+                <small class="text-muted d-block mt-2 text-center">Serás redirigido a Mercado Pago para pagar.</small>
+            </div>
         </div>
     </div>
-</div>
+</form>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Costos (deben coincidir con pedidos/envios.py)
+    const COSTO_RETIRO = 0;
+    const COSTO_RM_URBANA = 3500;
+    const COSTO_RM_RESTO = 4500;
+    const COSTO_REGIONES = 5500;
+    const UMBRAL_GRATIS = 40000;
+    const COMUNAS_URBANAS = [
+        'Santiago','Providencia','Las Condes','Vitacura','Lo Barnechea','Nunoa','Macul','La Reina','La Florida',
+        'Penalolen','Maipu','San Miguel','San Joaquin','Estacion Central','Independencia','Recoleta',
+        'Quinta Normal','Cerrillos','Pedro Aguirre Cerda','Lo Espejo','La Cisterna','San Bernardo',
+        'Puente Alto','La Granja','San Ramon','El Bosque','Conchali','Huechuraba','Renca','Quilicura',
+        'Cerro Navia','Lo Prado','Pudahuel'
+    ];
+    const SUBTOTAL = {{ subtotal|floatformat:0 }};
+
+    function formatoCLP(n) {
+        return '$' + Math.round(n).toLocaleString('es-CL');
+    }
+
+    function calcularEnvio() {
+        const metodo = document.querySelector('input[name="metodo_envio"]:checked').value;
+        if (metodo === 'retiro_local') return 0;
+        if (SUBTOTAL >= UMBRAL_GRATIS) return 0;
+        const region = document.querySelector('input[name="region"]').value.trim().toLowerCase();
+        if (!region.startsWith('region metropolitana') && !region.startsWith('región metropolitana')) {
+            return COSTO_REGIONES;
+        }
+        const comuna = document.querySelector('select[name="comuna"]').value;
+        return COMUNAS_URBANAS.includes(comuna) ? COSTO_RM_URBANA : COSTO_RM_RESTO;
+    }
+
+    function actualizar() {
+        const envio = calcularEnvio();
+        document.getElementById('envioMostrar').textContent = envio === 0 ? 'Gratis' : formatoCLP(envio);
+        document.getElementById('envioMostrar').classList.toggle('text-muted', envio === 0);
+        document.getElementById('totalMostrar').textContent = formatoCLP(SUBTOTAL + envio);
+    }
+
+    document.querySelectorAll('input[name="metodo_envio"]').forEach(r => {
+        r.addEventListener('change', function() {
+            document.querySelectorAll('.metodo-envio-card').forEach(c => c.classList.remove('active'));
+            this.closest('.metodo-envio-card').classList.add('active');
+            const seccionDir = document.getElementById('seccionDireccion');
+            seccionDir.style.display = this.value === 'retiro_local' ? 'none' : 'block';
+            actualizar();
+        });
+    });
+    document.querySelector('select[name="comuna"]').addEventListener('change', actualizar);
+    document.querySelector('input[name="region"]').addEventListener('input', actualizar);
+    actualizar();
+</script>
 {% endblock %}

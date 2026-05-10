@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% load aflora_filters %}
+
+{% block title %}Mis favoritos — Aflora Natural{% endblock %}
+
+{% block content %}
+<div class="page-header" style="padding:2rem 0 1.5rem; border-bottom:1px solid var(--rose-light); margin-bottom:2rem;">
+    <h2 style="margin-bottom:0.2rem;">Mis favoritos</h2>
+    <p style="color:var(--text-muted); font-size:0.9rem;">Productos que guardaste para más tarde</p>
+</div>
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
+    {% for item in items %}
+    <div class="col">
+        <div class="card h-100 shadow-sm">
+            {% if item.producto.imagen %}
+                <img src="{{ item.producto.imagen.url }}" class="card-img-top" alt="{{ item.producto.nombre }}" style="height:220px; object-fit:cover;">
+            {% endif %}
+            <div class="card-body d-flex flex-column">
+                <div style="font-family:'Playfair Display', serif; font-size:1rem;">{{ item.producto.nombre }}</div>
+                <div class="precio my-2">{{ item.producto.precio_desde|clp }}</div>
+                <div class="d-flex gap-2 mt-auto">
+                    <a href="{{ item.producto.get_absolute_url }}" class="btn btn-outline-primary btn-sm flex-grow-1">Ver</a>
+                    <form method="post" action="{% url 'catalogo:toggle_wishlist' item.producto.pk %}">
+                        {% csrf_token %}
+                        <button class="btn btn-outline-secondary btn-sm" title="Quitar">♥</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 py-5 text-center">
+        <p class="text-muted fst-italic">Aún no tienes productos en favoritos.</p>
+        <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-outline-primary mt-2">Explorar catálogo</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
