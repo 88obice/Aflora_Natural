@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Aflora Natural{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Velas aromáticas, homesprays y difusores artesanales hechos en Santiago de Chile con ingredientes naturales.{% endblock %}">
+    <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
+    <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+
+    <!-- Open Graph (preview en WhatsApp, Facebook, Instagram) -->
+    <meta property="og:site_name" content="Aflora Natural">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}Aflora Natural — Aromas que transforman{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Velas, homesprays y difusores artesanales desde Chile.{% endblock %}">
+    <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+    {% block og_extra %}{% endblock %}
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
@@ -205,6 +217,9 @@
                     </li>
                     {% if user.is_authenticated %}
                         <li class="nav-item">
+                            <a class="nav-link" href="{% url 'catalogo:ver_wishlist' %}" title="Favoritos">♡</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'usuarios:perfil' %}">{{ user.username }}</a>
                         </li>
                         <li class="nav-item">
@@ -237,23 +252,67 @@
 
     <footer>
         <div class="container">
-            <div class="row align-items-center">
+            <div class="row g-4">
                 <div class="col-md-4">
                     <div class="footer-brand">Aflora Natural</div>
                     <div class="footer-tagline">Aromas que transforman</div>
+                    <div class="mt-3" style="font-size:0.85rem;">
+                        <a href="https://wa.me/56989560937" target="_blank">WhatsApp +56 9 8956 0937</a><br>
+                        <a href="https://www.instagram.com/aflora_natural/" target="_blank">Instagram @aflora_natural</a><br>
+                        <a href="mailto:hola@afloranatural.cl">hola@afloranatural.cl</a>
+                    </div>
                 </div>
-                <div class="col-md-4 text-center mt-3 mt-md-0">
-                    <small style="color:rgba(255,255,255,0.45)">
-                        Santiago de Chile &nbsp;·&nbsp;
-                        <a href="https://www.instagram.com/aflora_natural/" target="_blank">Instagram</a>
-                    </small>
+
+                <div class="col-md-3">
+                    <div style="color:#fff; font-size:0.85rem; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.6rem;">Aflora</div>
+                    <ul class="list-unstyled mb-0" style="font-size:0.85rem; line-height:1.9;">
+                        <li><a href="{% url 'catalogo:sobre_nosotros' %}">Sobre nosotros</a></li>
+                        <li><a href="{% url 'catalogo:lista_productos' %}">Catálogo</a></li>
+                        <li><a href="{% url 'catalogo:pagina_contacto' %}">Contacto</a></li>
+                    </ul>
                 </div>
-                <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                    <small style="color:rgba(255,255,255,0.35)">© 2025 Aflora Natural</small>
+
+                <div class="col-md-2">
+                    <div style="color:#fff; font-size:0.85rem; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.6rem;">Información</div>
+                    <ul class="list-unstyled mb-0" style="font-size:0.85rem; line-height:1.9;">
+                        <li><a href="{% url 'catalogo:pagina_envios' %}">Envíos</a></li>
+                        <li><a href="{% url 'catalogo:pagina_terminos' %}">Términos</a></li>
+                        <li><a href="{% url 'catalogo:pagina_privacidad' %}">Privacidad</a></li>
+                    </ul>
+                </div>
+
+                <div class="col-md-3">
+                    <div style="color:#fff; font-size:0.85rem; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.6rem;">Newsletter</div>
+                    <p style="font-size:0.78rem; color:rgba(255,255,255,0.6); margin-bottom:0.6rem;">Novedades y aromas nuevos a tu email.</p>
+                    <form method="post" action="{% url 'catalogo:suscribir_newsletter' %}" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <input type="email" name="email" required placeholder="Tu email"
+                               style="flex:1; padding:0.4rem 0.7rem; border-radius:2px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); color:#fff; font-size:0.82rem;">
+                        <button type="submit"
+                                style="background:var(--rose-light); color:var(--terracotta-d); border:none; padding:0.4rem 0.8rem; border-radius:2px; font-size:0.78rem; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;">
+                            Unirme
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="row mt-4 pt-3" style="border-top:1px solid rgba(255,255,255,0.1);">
+                <div class="col-md-6">
+                    <small style="color:rgba(255,255,255,0.4)">© {% now "Y" %} Aflora Natural · Santiago de Chile</small>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <small style="color:rgba(255,255,255,0.4)">Pagos vía Mercado Pago · Despacho a todo Chile</small>
                 </div>
             </div>
         </div>
     </footer>
+
+    <!-- Cookie banner (Ley 21.096) -->
+    <div id="cookieBanner" style="display:none; position:fixed; bottom:1rem; left:1rem; right:1rem; max-width:560px; margin:auto; background:#3D2B1F; color:#fff; padding:1rem 1.2rem; border-radius:4px; box-shadow:0 6px 24px rgba(0,0,0,0.25); z-index:9998; font-size:0.85rem;">
+        Usamos cookies necesarias para que el sitio funcione (carrito, login). Al continuar, aceptas su uso.
+        <a href="{% url 'catalogo:pagina_privacidad' %}" style="color:var(--rose-light); text-decoration:underline;">Más info</a>.
+        <button onclick="aceptarCookies()" style="margin-left:0.8rem; background:var(--rose-light); color:var(--terracotta-d); border:none; padding:0.35rem 1rem; border-radius:2px; cursor:pointer; font-size:0.82rem;">Aceptar</button>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -313,6 +372,17 @@
         })
         .catch(() => mostrarToast('Error al agregar. Intenta de nuevo.', true));
     });
+
+    // Cookie banner
+    function aceptarCookies() {
+        document.cookie = "aflora_cookies=1; path=/; max-age=" + (60*60*24*365) + "; SameSite=Lax";
+        document.getElementById('cookieBanner').style.display = 'none';
+    }
+    if (!getCookie('aflora_cookies')) {
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('cookieBanner').style.display = 'block';
+        });
+    }
     </script>
 
     {% block extra_js %}{% endblock %}
