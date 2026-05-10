@@ -1,7 +1,10 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from .forms import RegistroForm, LoginForm
+from django.contrib import messages
+from .forms import RegistroForm, LoginForm, PerfilForm, DireccionForm
+from .models import PerfilUsuario, Direccion
+
 
 def registro(request):
     if request.method == 'POST':
@@ -9,28 +12,138 @@ def registro(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
+            messages.success(request, 'Bienvenida! Tu cuenta fue creada.')
             return redirect('catalogo:inicio')
     else:
         form = RegistroForm()
     return render(request, 'usuarios/registro.html', {'form': form})
+
 
 def login_view(request):
     if request.method == 'POST':
         form = LoginForm(data=request.POST)
         if form.is_valid():
             user = form.get_user()
+            # Guardar sesion_key anonima ANTES de login() — login() la regenera
+            sesion_key_anonima = request.session.session_key
             login(request, user)
-            return redirect('catalogo:inicio')
+            # Fusionar carrito anonimo al carrito del usuario
+            _merge_carrito(sesion_key_anonima, user)
+            next_url = request.GET.get('next') or request.POST.get('next')
+            return redirect(next_url or 'catalogo:inicio')
     else:
         form = LoginForm()
-    return render(request, 'usuarios/login.html', {'form': form})
+    return render(request, 'usuarios/login.html', {'form': form, 'next': request.GET.get('next', '')})
+
+
+def _merge_carrito(sesion_key_anonima, user):
+    """
+    Fusiona el carrito anonimo al carrito del usuario logueado.
+    - Si un item ya existe en el carrito del usuario, suma cantidades (tope: stock disponible).
+    - Borra el carrito anonimo al finalizar.
+    """
+    if not sesion_key_anonima:
+        return
+    from carrito.models import Carrito, ItemCarrito
+    try:
+        carrito_anonimo = Carrito.objects.get(sesion_key=sesion_key_anonima)
+    except Carrito.DoesNotExist:
+        return
+    items_anonimos = list(carrito_anonimo.items.select_related('producto', 'variante').all())
+    if not items_anonimos:
+        carrito_anonimo.delete()
+        return
+    carrito_usuario, _ = Carrito.objects.get_or_create(usuario=user)
+    for item in items_anonimos:
+        stock_max = item.variante.stock if item.variante else item.producto.stock
+        item_existente = carrito_usuario.items.filter(
+            producto=item.producto, variante=item.variante
+        ).first()
+        if item_existente:
+            nueva_cantidad = min(item_existente.cantidad + item.cantidad, stock_max)
+            item_existente.cantidad = nueva_cantidad
+            item_existente.save(update_fields=['cantidad'])
+        else:
+            cantidad = min(item.cantidad, stock_max)
+            if cantidad > 0:
+                ItemCarrito.objects.create(
+                    carrito=carrito_usuario,
+                    producto=item.producto,
+                    variante=item.variante,
+                    cantidad=cantidad,
+                )
+    carrito_anonimo.delete()
+
 
 def logout_view(request):
     logout(request)
     return redirect('catalogo:inicio')
 
+
 @login_required
 def perfil(request):
     from pedidos.models import Pedido
-    pedidos_recientes = Pedido.objects.filter(usuario=request.user).order_by('-creado')[:5]
-    return render(request, 'usuarios/perfil.html', {'pedidos_recientes': pedidos_recientes})
+    pedidos_recientes = Pedido.objects.filter(usuario=request.user).order_by('-creado').prefetch_related('items')[:5]
+    direcciones = request.user.direcciones.all()
+    return render(request, 'usuarios/perfil.html', {
+        'pedidos_recientes': pedidos_recientes,
+        'direcciones': direcciones,
+    })
+
+
+@login_required
+def editar_perfil(request):
+    perfil_obj, _ = PerfilUsuario.objects.get_or_create(usuario=request.user)
+    if request.method == 'POST':
+        form = PerfilForm(request.POST, instance=perfil_obj, usuario=request.user)
+        if form.is_valid():
+            form.save_full(request.user)
+            messages.success(request, 'Perfil actualizado.')
+            return redirect('usuarios:perfil')
+    else:
+        form = PerfilForm(instance=perfil_obj, usuario=request.user)
+    return render(request, 'usuarios/editar_perfil.html', {'form': form})
+
+
+@login_required
+def lista_direcciones(request):
+    direcciones = request.user.direcciones.all()
+    return render(request, 'usuarios/direcciones.html', {'direcciones': direcciones})
+
+
+@login_required
+def crear_direccion(request):
+    if request.method == 'POST':
+        form = DireccionForm(request.POST)
+        if form.is_valid():
+            d = form.save(commit=False)
+            d.usuario = request.user
+            d.save()
+            messages.success(request, 'Direccion guardada.')
+            return redirect('usuarios:direcciones')
+    else:
+        form = DireccionForm()
+    return render(request, 'usuarios/direccion_form.html', {'form': form, 'modo': 'crear'})
+
+
+@login_required
+def editar_direccion(request, pk):
+    direccion = get_object_or_404(Direccion, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        form = DireccionForm(request.POST, instance=direccion)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Direccion actualizada.')
+            return redirect('usuarios:direcciones')
+    else:
+        form = DireccionForm(instance=direccion)
+    return render(request, 'usuarios/direccion_form.html', {'form': form, 'modo': 'editar'})
+
+
+@login_required
+def eliminar_direccion(request, pk):
+    direccion = get_object_or_404(Direccion, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        direccion.delete()
+        messages.success(request, 'Direccion eliminada.')
+    return redirect('usuarios:direcciones')
