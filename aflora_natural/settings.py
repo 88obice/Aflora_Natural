@@ -42,9 +42,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Apps del proyecto
-    'usuarios',
-    'catalogo',
+    'django.contrib.sitemaps',
+    'django.contrib.sites',
+    # Apps del proyecto (con AppConfig explicito para asegurar que ready() corra)
+    'usuarios.apps.UsuariosConfig',
+    'catalogo.apps.CatalogoConfig',
     'carrito',
     'pedidos',
     'gestion',
@@ -104,6 +106,10 @@ else:
     }
 
 
+# Necesario para django.contrib.sites (lo usa el sitemap)
+SITE_ID = 1
+
+
 # ── Contraseñas ─────────────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -128,10 +134,22 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-STORAGES = {
-    'default':     {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
-    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
-}
+# ── Cloudinary (storage de imágenes en producción) ──────────────────────────
+# Formato: cloudinary://api_key:api_secret@cloud_name
+# En Railway: agregar esta var en Variables. En local: dejar vacía (usa filesystem).
+# El SDK de cloudinary lee CLOUDINARY_URL del entorno automaticamente.
+_CLOUDINARY_URL = os.getenv('CLOUDINARY_URL', '')
+
+if _CLOUDINARY_URL:
+    STORAGES = {
+        'default':     {'BACKEND': 'aflora_natural.storage.CloudinaryMediaStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+    }
+else:
+    STORAGES = {
+        'default':     {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+    }
 
 
 # ── Mercado Pago ────────────────────────────────────────────────────────────
@@ -160,3 +178,61 @@ MESSAGE_TAGS = {
 
 # ── Default primary key ─────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+# En desarrollo: logs van a la consola en formato legible.
+# En producción: además se envían a Sentry (si SENTRY_DSN está configurado).
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Loggers de nuestras apps -- usa logging.getLogger('aflora.pedidos')
+        'aflora': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+
+# ── Sentry (monitoreo de errores en producción) ─────────────────────────────
+# Configurar SENTRY_DSN en variables de entorno cuando se quiera activar.
+# Sin DSN, Sentry no se carga (sin overhead).
+SENTRY_DSN = os.getenv('SENTRY_DSN', '')
+if SENTRY_DSN and not DEBUG:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration()],
+            traces_sample_rate=0.1,        # 10% de requests con trazas (perf)
+            send_default_pii=False,         # nunca enviar datos personales del cliente
+            environment=os.getenv('ENVIRONMENT', 'production'),
+        )
+    except ImportError:
+        # sentry-sdk no instalado: no rompemos arranque
+        pass
