@@ -1,0 +1,15 @@
+# Configuracion explicita de Nixpacks para Railway.
+#
+# Nixpacks detecta Python/Django automaticamente y prepara la imagen,
+# pero `collectstatic` debe correr en BUILD (no en preDeploy) para que
+# los archivos estaticos del admin Django queden en la imagen Docker
+# y persistan al contenedor de runtime.
+#
+# Antes esto vivia en preDeployCommand de railway.toml, pero ese
+# contenedor muere despues del comando y los archivos no persisten,
+# resultando en 404 sobre /static/admin/css/* en produccion.
+
+[phases.build]
+cmds = [
+    "python manage.py collectstatic --noinput"
+]
