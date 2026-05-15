@@ -27,14 +27,19 @@
 <div class="auth-panel">
     <h2>Bienvenida</h2>
     <div class="subtitle">Inicia sesión para continuar</div>
-    <form method="post">
+    <form method="post" novalidate>
         {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger small py-2 mb-3" role="alert">
+                Email o contraseña incorrectos. Verifica los datos e intenta de nuevo.
+            </div>
+        {% endif %}
         {% for field in form %}
             <div class="mb-3">
                 <label class="form-label">{{ field.label }}</label>
                 {{ field }}
                 {% if field.errors %}
-                    <div class="text-danger small mt-1">{{ field.errors }}</div>
+                    <div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>
                 {% endif %}
             </div>
         {% endfor %}

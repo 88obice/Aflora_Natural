@@ -375,6 +375,45 @@ def editar_producto(request, pk):
 
 @login_required
 @user_passes_test(solo_staff, login_url='catalogo:inicio')
+def agregar_stock(request, pk):
+    """
+    Suma una cantidad al stock actual de un producto (no reemplaza).
+    Solo aplica a productos SIN variantes; si tiene variantes, el stock
+    vive en cada variante y hay que editarlas desde el form del producto.
+    """
+    producto = get_object_or_404(Producto, pk=pk)
+    if request.method != 'POST':
+        return redirect('gestion:productos')
+    if producto.variantes.exists():
+        messages.warning(
+            request,
+            'El producto "{}" tiene variantes. Edita el stock de cada variante desde el formulario del producto.'.format(producto.nombre)
+        )
+        return redirect('gestion:productos')
+    try:
+        cantidad = int(request.POST.get('cantidad', '0'))
+    except (TypeError, ValueError):
+        cantidad = 0
+    if cantidad <= 0:
+        messages.error(request, 'La cantidad a agregar debe ser mayor a 0.')
+        return redirect('gestion:productos')
+    if cantidad > 9999:
+        messages.error(request, 'Cantidad inválida (maximo 9999 por vez).')
+        return redirect('gestion:productos')
+    stock_anterior = producto.stock
+    producto.stock = stock_anterior + cantidad
+    producto.save(update_fields=['stock', 'actualizado'])
+    messages.success(
+        request,
+        'Stock de "{}" actualizado: {} → {} (+{})'.format(
+            producto.nombre, stock_anterior, producto.stock, cantidad
+        )
+    )
+    return redirect('gestion:productos')
+
+
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
 def eliminar_producto(request, pk):
     producto = get_object_or_404(Producto, pk=pk)
     if request.method == 'POST':

@@ -13,6 +13,19 @@
     .stock-pill.bajo { background:#fff3cd; color:#856404; }
     .stock-pill.agotado { background:#f8d7da; color:#721c24; }
     .stock-pill.ok { background:#d4edda; color:#155724; }
+    .stock-add-form { display:inline-flex; align-items:center; gap:0.3rem; margin-top:0.35rem; }
+    .stock-add-form input[type=number] {
+        width:62px; height:26px; padding:0 0.4rem; font-size:0.78rem;
+        border:1px solid var(--rose-light); border-radius:2px;
+    }
+    .stock-add-form button {
+        height:26px; padding:0 0.55rem; font-size:0.75rem;
+        background:var(--rose-light); border:1px solid var(--rose);
+        color:var(--terracotta-d); border-radius:2px; cursor:pointer;
+        font-weight:600;
+    }
+    .stock-add-form button:hover { background:var(--rose); color:#fff; }
+    .stock-add-form .variantes-hint { font-size:0.72rem; color:var(--text-muted); font-style:italic; }
 </style>
 {% endblock %}
 {% block content %}
@@ -47,9 +60,21 @@
                 <td class="text-muted">{{ p.categoria }}</td>
                 <td class="precio">{{ p.precio|clp }}</td>
                 <td>
-                    {% if p.stock == 0 %}<span class="stock-pill agotado">Agotado</span>
-                    {% elif p.stock <= 3 %}<span class="stock-pill bajo">{{ p.stock }}</span>
-                    {% else %}<span class="stock-pill ok">{{ p.stock }}</span>{% endif %}
+                    {% if p.variantes.exists %}
+                        <span class="stock-pill ok" title="Stock por variante">por variantes</span>
+                        <div class="stock-add-form mt-1">
+                            <span class="variantes-hint">editar variantes →</span>
+                        </div>
+                    {% else %}
+                        {% if p.stock == 0 %}<span class="stock-pill agotado">Agotado</span>
+                        {% elif p.stock <= 3 %}<span class="stock-pill bajo">{{ p.stock }}</span>
+                        {% else %}<span class="stock-pill ok">{{ p.stock }}</span>{% endif %}
+                        <form method="post" action="{% url 'gestion:agregar_stock' p.pk %}" class="stock-add-form">
+                            {% csrf_token %}
+                            <input type="number" name="cantidad" min="1" max="9999" placeholder="+5" required title="Cantidad a sumar al stock actual">
+                            <button type="submit" title="Sumar al stock actual">Agregar</button>
+                        </form>
+                    {% endif %}
                 </td>
                 <td>{% if p.disponible %}<span class="text-success">✓</span>{% else %}<span class="text-danger">✗</span>{% endif %}</td>
                 <td class="text-end">

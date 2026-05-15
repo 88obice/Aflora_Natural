@@ -216,6 +216,14 @@
                         </a>
                     </li>
                     {% if user.is_authenticated %}
+                        {% if user.is_staff %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'gestion:dashboard' %}"
+                               style="background-color: var(--terracotta); color: #fff; border-radius: 3px; padding: 0.35rem 0.9rem; font-weight: 600; letter-spacing: 0.04em;">
+                                Panel
+                            </a>
+                        </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'catalogo:ver_wishlist' %}" title="Favoritos">♡</a>
                         </li>
