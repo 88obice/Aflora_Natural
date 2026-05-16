@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -7,6 +8,13 @@
     <meta name="description" content="{% block meta_description %}Velas aromáticas, homesprays y difusores artesanales hechos en Santiago de Chile con ingredientes naturales.{% endblock %}">
     <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
     <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+
+    <!-- Favicon (set generado con favicon.io) -->
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon_io/favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon_io/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon_io/favicon-16x16.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'favicon_io/apple-touch-icon.png' %}">
+    <link rel="manifest" href="{% static 'favicon_io/site.webmanifest' %}">
 
     <!-- Open Graph (preview en WhatsApp, Facebook, Instagram) -->
     <meta property="og:site_name" content="Aflora Natural">

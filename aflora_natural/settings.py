@@ -130,6 +130,11 @@ USE_TZ        = True
 STATIC_URL  = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Carpeta con archivos estaticos propios (favicon, logos, etc).
+# collectstatic los copia a STATIC_ROOT durante el build.
+_static_dir = BASE_DIR / 'static'
+STATICFILES_DIRS = [_static_dir] if _static_dir.exists() else []
+
 # ── Media (imágenes de productos) ──────────────────────────────────────────
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -164,6 +169,15 @@ EMAIL_USE_TLS       = True
 EMAIL_HOST_USER     = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL  = os.getenv('EMAIL_HOST_USER')
+
+# Admins que reciben notificaciones de errores (Django los manda en produccion
+# cuando DEBUG=False) y nuevos pedidos (pedidos/views.py:_notificar_admin_nuevo_pedido).
+# Si ADMIN_EMAIL no esta definido, mail_admins hace fallback a DEFAULT_FROM_EMAIL.
+_admin_email = os.getenv('ADMIN_EMAIL', '').strip()
+_admin_name  = os.getenv('ADMIN_NAME', 'Admin Aflora').strip()
+if _admin_email:
+    ADMINS   = [(_admin_name, _admin_email)]
+    MANAGERS = ADMINS
 
 
 # ── Mensajes → clases Bootstrap ────────────────────────────────────────────
