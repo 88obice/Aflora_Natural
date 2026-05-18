@@ -77,6 +77,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'carrito.context_processors.carrito_contador',
+                'aflora_natural.context_processors.analytics_ids',
             ],
         },
     },
@@ -178,6 +179,12 @@ _admin_name  = os.getenv('ADMIN_NAME', 'Admin Aflora').strip()
 if _admin_email:
     ADMINS   = [(_admin_name, _admin_email)]
     MANAGERS = ADMINS
+
+# ── Analytics (GA4 + Meta Pixel) ────────────────────────────────────────────
+# Si vacios, los snippets no se renderizan. Activar en produccion poniendo
+# las variables en Railway. Sin tracking en local/desarrollo.
+GA4_MEASUREMENT_ID = os.getenv('GA4_MEASUREMENT_ID', '').strip()
+META_PIXEL_ID      = os.getenv('META_PIXEL_ID', '').strip()
 
 
 # ── Mensajes → clases Bootstrap ────────────────────────────────────────────
