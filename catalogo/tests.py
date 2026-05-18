@@ -1,11 +1,89 @@
 """Tests del catalogo: slug, agotado, resenas, propiedades de Producto."""
+import io
 from decimal import Decimal
+from PIL import Image
 from django.test import TestCase
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from catalogo.models import (
     Categoria, Producto, Variante, Resena, Wishlist, NotificacionStock,
 )
+from catalogo.image_utils import comprimir_imagen
 from pedidos.models import Pedido, ItemPedido
+
+
+def _fake_upload(width, height, formato='JPEG', name='foto.jpg', mode='RGB'):
+    """Genera un InMemoryUploadedFile con una imagen de las dimensiones dadas."""
+    img = Image.new(mode, (width, height), color=(120, 80, 60))
+    buf = io.BytesIO()
+    img.save(buf, format=formato)
+    buf.seek(0)
+    content_type = 'image/jpeg' if formato == 'JPEG' else f'image/{formato.lower()}'
+    return InMemoryUploadedFile(
+        buf, field_name='imagen', name=name,
+        content_type=content_type, size=buf.getbuffer().nbytes, charset=None,
+    )
+
+
+class CompresionImagenTests(TestCase):
+    """Tests del helper comprimir_imagen: redimensionar, calidad, modos."""
+
+    def test_imagen_grande_se_reduce_a_max_1200(self):
+        upload = _fake_upload(3000, 2000)  # 6MP, mas grande que el limite
+        comprimida = comprimir_imagen(_FieldShim(upload))
+        self.assertIsNotNone(comprimida)
+        # Releer la imagen comprimida y verificar dimensiones
+        img = Image.open(comprimida)
+        self.assertLessEqual(max(img.size), 1200)
+        # Mantiene aspect ratio aproximado (3:2)
+        ratio_original = 3000 / 2000
+        ratio_final = img.size[0] / img.size[1]
+        self.assertAlmostEqual(ratio_original, ratio_final, places=1)
+
+    def test_imagen_pequena_no_se_agranda(self):
+        upload = _fake_upload(400, 300)
+        comprimida = comprimir_imagen(_FieldShim(upload))
+        self.assertIsNotNone(comprimida)
+        img = Image.open(comprimida)
+        self.assertEqual(img.size, (400, 300))
+
+    def test_imagen_png_con_alpha_se_convierte_a_jpeg(self):
+        upload = _fake_upload(800, 600, formato='PNG', name='trans.png', mode='RGBA')
+        comprimida = comprimir_imagen(_FieldShim(upload))
+        self.assertIsNotNone(comprimida)
+        self.assertTrue(comprimida.name.endswith('.jpg'))
+        img = Image.open(comprimida)
+        self.assertEqual(img.mode, 'RGB')  # alpha eliminado
+
+    def test_resultado_pesa_mucho_menos_que_original(self):
+        upload = _fake_upload(3000, 2000)
+        peso_original = upload.size
+        comprimida = comprimir_imagen(_FieldShim(upload))
+        self.assertLess(comprimida.size, peso_original // 2)
+
+    def test_no_procesa_si_no_es_upload_nuevo(self):
+        # FieldShim con un BytesIO suelto (no es UploadedFile) -> devuelve None
+        buf = io.BytesIO(b'no soy un upload')
+        shim = _FieldShim.from_raw_file(buf)
+        self.assertIsNone(comprimir_imagen(shim))
+
+
+class _FieldShim:
+    """Wrapper minimo que imita el interfaz que comprimir_imagen espera de un FieldFile."""
+
+    def __init__(self, upload):
+        self.file = upload
+        self.name = upload.name
+
+    @classmethod
+    def from_raw_file(cls, raw):
+        instance = cls.__new__(cls)
+        instance.file = raw
+        instance.name = 'no_upload.jpg'
+        return instance
+
+    def __bool__(self):
+        return True
 
 
 class SlugTests(TestCase):

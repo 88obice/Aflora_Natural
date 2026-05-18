@@ -22,6 +22,11 @@ class Categoria(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.nombre)
+        # Comprimir imagen si es upload nuevo (no toca si ya esta en storage)
+        from .image_utils import comprimir_imagen
+        comprimida = comprimir_imagen(self.imagen)
+        if comprimida:
+            self.imagen.save(comprimida.name, comprimida, save=False)
         super().save(*args, **kwargs)
 
 
@@ -65,6 +70,11 @@ class Producto(models.Model):
                 slug_candidato = f"{base}-{i}"
                 i += 1
             self.slug = slug_candidato
+        # Comprimir imagen principal si es upload nuevo
+        from .image_utils import comprimir_imagen
+        comprimida = comprimir_imagen(self.imagen)
+        if comprimida:
+            self.imagen.save(comprimida.name, comprimida, save=False)
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -111,6 +121,14 @@ class ImagenProducto(models.Model):
 
     def __str__(self):
         return f"{self.producto.nombre} -- img #{self.pk}"
+
+    def save(self, *args, **kwargs):
+        # Comprimir imagen si es upload nuevo
+        from .image_utils import comprimir_imagen
+        comprimida = comprimir_imagen(self.imagen)
+        if comprimida:
+            self.imagen.save(comprimida.name, comprimida, save=False)
+        super().save(*args, **kwargs)
 
 
 class Variante(models.Model):
