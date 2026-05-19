@@ -27,12 +27,24 @@
         <div class="card p-4 mb-3" style="border-color:var(--rose-light);">
             <h5 style="font-size:1.05rem;">Pedidos recientes</h5>
             {% for p in pedidos_recientes %}
-            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--cream-dark);">
-                <div>
+            <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--cream-dark); gap:1rem;">
+                <div class="flex-grow-1">
                     <a href="{% url 'pedidos:detalle_pedido' p.pk %}" style="color:var(--terracotta); text-decoration:none;">Pedido #{{ p.pk }}</a>
                     <small class="text-muted d-block">{{ p.creado|date:"d M Y" }} · <span style="text-transform:capitalize;">{{ p.get_estado_display }}</span></small>
                 </div>
-                <span class="precio">{{ p.total|clp }}</span>
+                <div class="text-end">
+                    <span class="precio d-block">{{ p.total|clp }}</span>
+                    {% if p.estado == 'pendiente' %}
+                    <form method="post" action="{% url 'pedidos:cancelar_pedido' p.pk %}"
+                          onsubmit="return confirm('¿Cancelar pedido #{{ p.pk }}?');"
+                          class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm" style="border:1px solid #c0392b; color:#c0392b; background:transparent; font-size:0.72rem; padding:0.15rem 0.5rem; margin-top:0.2rem;">
+                            Cancelar
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
             </div>
             {% empty %}
                 <p class="text-muted small fst-italic">Aún no tienes pedidos. <a href="{% url 'catalogo:lista_productos' %}">Explora el catálogo</a>.</p>

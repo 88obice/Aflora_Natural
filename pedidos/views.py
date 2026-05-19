@@ -33,6 +33,9 @@ def _enviar_confirmacion_cliente(pedido):
         for it in pedido.items.all()
     )
     direccion = pedido.direccion_formateada()
+    base_url = getattr(settings, 'BASE_URL', '').rstrip('/')
+    link_tracking = '{}/pedidos/track/{}/'.format(base_url, pedido.token_publico) if pedido.token_publico else ''
+
     mensaje = """Hola {nombre},
 
 Tu pedido #{pid} fue confirmado.
@@ -45,6 +48,8 @@ Total:    ${tot:,}
 
 Entrega: {dir}
 Telefono: {tel}
+
+Ver estado de tu pedido: {link}
 
 Nos contactamos contigo pronto para coordinar.
 Si tienes dudas: WhatsApp +56 9 8956 0937
@@ -59,6 +64,7 @@ Si tienes dudas: WhatsApp +56 9 8956 0937
         tot=int(pedido.total),
         dir=direccion,
         tel=pedido.telefono,
+        link=link_tracking,
     ).replace(',', '.')
 
     try:
@@ -356,6 +362,14 @@ def crear_pedido(request):
         logger.info('Pedido #%s creado (subtotal=%s envio=%s total=%s metodo_pago=%s)',
                     pedido.pk, subtotal, costo_envio, total, metodo_pago)
 
+        # Si es invitado, guardar el pedido en la sesion para que pueda
+        # verlo durante esta sesion del navegador sin login.
+        if not request.user.is_authenticated:
+            pedidos_invitado = request.session.get('pedidos_invitado', [])
+            if pedido.pk not in pedidos_invitado:
+                pedidos_invitado.append(pedido.pk)
+                request.session['pedidos_invitado'] = pedidos_invitado
+
         # Transferencia: redirigir a pantalla con datos bancarios e instrucciones
         if metodo_pago == 'transferencia':
             _notificar_admin_transferencia_pendiente(pedido)
@@ -399,11 +413,43 @@ def historial_pedidos(request):
 
 
 def detalle_pedido(request, pk):
+    """
+    URL privada por ID secuencial. Solo dueno logueado o staff.
+    Los invitados deben usar /pedidos/track/<token>/ — esa URL es publica
+    pero impredecible (defensa contra IDOR).
+
+    Excepcion practica: si el invitado acaba de crear el pedido en ESTA
+    sesion del navegador, le permitimos ver via ID directo (lo guardamos
+    en session['pedidos_invitado']). Si pierde la cookie, recupera acceso
+    por el link del email (que lleva al tracking publico por token).
+    """
     pedido = get_object_or_404(Pedido.objects.prefetch_related('items__producto', 'items__variante'), pk=pk)
-    # Solo dueno o staff (los invitados pueden ver via link directo solo si tienen el ID)
-    if request.user.is_authenticated and pedido.usuario and pedido.usuario != request.user and not request.user.is_staff:
+    if request.user.is_authenticated:
+        if pedido.usuario == request.user or request.user.is_staff:
+            return render(request, 'pedidos/detalle_pedido.html', {'pedido': pedido})
+        # Logueado pero no es su pedido ni es staff
         return redirect('catalogo:inicio')
-    return render(request, 'pedidos/detalle_pedido.html', {'pedido': pedido})
+    # Anonimo: solo dejar pasar si lo creo en esta sesion
+    pedidos_invitado = request.session.get('pedidos_invitado', [])
+    if pedido.pk in pedidos_invitado and pedido.usuario is None:
+        return render(request, 'pedidos/detalle_pedido.html', {'pedido': pedido})
+    # Sin sesion valida: redirigir al tracking por token (si lo tiene)
+    if pedido.token_publico:
+        return redirect('pedidos:track_pedido', token=pedido.token_publico)
+    return redirect('catalogo:inicio')
+
+
+def track_pedido(request, token):
+    """
+    URL publica del pedido, accesible por token impredecible.
+    Esta es la URL que va en TODOS los emails al cliente.
+    Sin login. Solo lectura — para cancelar tambien hay que tener el token.
+    """
+    pedido = get_object_or_404(
+        Pedido.objects.prefetch_related('items__producto', 'items__variante'),
+        token_publico=token,
+    )
+    return render(request, 'pedidos/track_pedido.html', {'pedido': pedido})
 
 
 def pago_transferencia(request, pk):
@@ -418,6 +464,56 @@ def pago_transferencia(request, pk):
     return render(request, 'pedidos/pago_transferencia.html', {
         'pedido': pedido,
     })
+
+
+@require_POST
+def cancelar_pedido(request, pk):
+    """
+    Cancelacion via ID (usuario logueado dueno, o invitado con sesion).
+    Para invitados sin sesion (ej. desde email en otro dispositivo),
+    usar /pedidos/track/<token>/cancelar/ que valida con el token.
+    """
+    pedido = get_object_or_404(Pedido, pk=pk)
+    autorizado = False
+    if request.user.is_authenticated and pedido.usuario == request.user:
+        autorizado = True
+    elif pedido.usuario is None and pedido.pk in request.session.get('pedidos_invitado', []):
+        autorizado = True
+    if not autorizado:
+        messages.error(request, 'No tienes permiso para cancelar este pedido.')
+        return redirect('catalogo:inicio')
+    return _aplicar_cancelacion(request, pedido)
+
+
+@require_POST
+def cancelar_pedido_por_token(request, token):
+    """
+    Cancelacion publica via token (el link del email del invitado).
+    Sin login, pero requiere conocer el token impredecible.
+    """
+    pedido = get_object_or_404(Pedido, token_publico=token)
+    return _aplicar_cancelacion(request, pedido)
+
+
+def _aplicar_cancelacion(request, pedido):
+    if pedido.estado != 'pendiente':
+        messages.warning(
+            request,
+            'Solo puedes cancelar pedidos pendientes de pago. Este está "{}". '
+            'Para cualquier cambio, contáctanos por WhatsApp.'.format(pedido.get_estado_display())
+        )
+        # Redirigir a donde corresponda
+        if request.user.is_authenticated and pedido.usuario == request.user:
+            return redirect('pedidos:detalle_pedido', pk=pedido.pk)
+        return redirect('pedidos:track_pedido', token=pedido.token_publico)
+    pedido.estado = 'cancelado'
+    pedido.save(update_fields=['estado', 'actualizado'])
+    quien = request.user.username if request.user.is_authenticated else 'invitado'
+    logger.info('Pedido #%s cancelado por %s', pedido.pk, quien)
+    messages.success(request, 'Pedido #{} cancelado.'.format(pedido.pk))
+    if request.user.is_authenticated:
+        return redirect('usuarios:perfil')
+    return redirect('pedidos:track_pedido', token=pedido.token_publico)
 
 
 @require_POST

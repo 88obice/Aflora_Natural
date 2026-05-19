@@ -47,6 +47,26 @@
             <div class="value">{{ pedido.direccion_entrega }}</div>
             <div class="label">Teléfono</div>
             <div class="value">{{ pedido.telefono }}</div>
+
+            {% if pedido.estado == 'pendiente' and pedido.metodo_pago == 'transferencia' %}
+            <a href="{% url 'pedidos:pago_transferencia' pedido.pk %}" class="btn btn-primary btn-sm w-100 mb-2">
+                Ver datos de transferencia
+            </a>
+            {% endif %}
+
+            {% if pedido.estado == 'pendiente' and user.is_authenticated and pedido.usuario == user %}
+            <form method="post" action="{% url 'pedidos:cancelar_pedido' pedido.pk %}"
+                  onsubmit="return confirm('¿Cancelar este pedido? Esta acción no se puede deshacer.');"
+                  class="mt-2">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-secondary btn-sm w-100" style="border-color:#c0392b; color:#c0392b;">
+                    Cancelar pedido
+                </button>
+            </form>
+            <small class="text-muted d-block mt-1" style="font-size:0.78rem;">
+                Solo se puede cancelar mientras está pendiente de pago.
+            </small>
+            {% endif %}
         </div>
     </div>
 

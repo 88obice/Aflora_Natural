@@ -317,6 +317,31 @@ class TransferenciaBancariaTests(TestCase):
         pedido.refresh_from_db()
         self.assertEqual(pedido.estado, 'pendiente')
 
+    def test_cliente_puede_cancelar_pedido_pendiente_propio(self):
+        pedido = self._crear_pedido_transferencia()
+        self.client.force_login(self.user)
+        resp = self.client.post('/pedidos/{}/cancelar/'.format(pedido.pk))
+        self.assertEqual(resp.status_code, 302)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'cancelado')
+
+    def test_cliente_no_puede_cancelar_pedido_de_otro_usuario(self):
+        pedido = self._crear_pedido_transferencia()
+        otro = User.objects.create_user('otro', 'otro@t.com', 'pass1234')
+        self.client.force_login(otro)
+        self.client.post('/pedidos/{}/cancelar/'.format(pedido.pk))
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'pendiente')  # no se canceló
+
+    def test_no_se_puede_cancelar_pedido_confirmado(self):
+        pedido = self._crear_pedido_transferencia()
+        pedido.estado = 'confirmado'
+        pedido.save()
+        self.client.force_login(self.user)
+        self.client.post('/pedidos/{}/cancelar/'.format(pedido.pk))
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'confirmado')  # no se cancela
+
     def test_subir_comprobante_guarda_archivo(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         pedido = self._crear_pedido_transferencia()
@@ -335,3 +360,87 @@ class TransferenciaBancariaTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         pedido.refresh_from_db()
         self.assertTrue(pedido.comprobante_transferencia)
+
+
+# =========================================================================
+# 5. Tracking publico por token (defensa IDOR + invitados)
+# =========================================================================
+
+class TrackingPublicoTokenTests(TestCase):
+    """
+    Verificacion del flow seguro de acceso a pedidos:
+    - Detalle por ID (/pedidos/<pk>/) solo para dueno logueado o invitado en
+      esta sesion
+    - Track por token (/pedidos/track/<token>/) publico pero impredecible
+    """
+
+    def setUp(self):
+        self.cat = Categoria.objects.create(nombre='Velas')
+        self.producto = Producto.objects.create(
+            categoria=self.cat, nombre='Vela',
+            descripcion='x', precio=Decimal('5000'), stock=10,
+        )
+        self.user = User.objects.create_user('cli', 'cli@t.com', 'pass1234')
+
+    def _crear_pedido_invitado(self):
+        return Pedido.objects.create(
+            usuario=None,
+            nombre_cliente='Juan', email_cliente='j@t.com',
+            telefono='+56912345678', metodo_envio='retiro_local',
+            subtotal=Decimal('5000'), costo_envio=Decimal('0'), total=Decimal('5000'),
+        )
+
+    def test_token_publico_se_genera_al_crear(self):
+        p = self._crear_pedido_invitado()
+        self.assertTrue(p.token_publico)
+        # 24 bytes urlsafe_b64 ≈ 32 chars
+        self.assertGreaterEqual(len(p.token_publico), 30)
+
+    def test_dos_pedidos_tienen_tokens_distintos(self):
+        p1 = self._crear_pedido_invitado()
+        p2 = self._crear_pedido_invitado()
+        self.assertNotEqual(p1.token_publico, p2.token_publico)
+
+    def test_invitado_sin_sesion_no_ve_detalle_por_id(self):
+        """Defensa contra IDOR: alguien que enumera /pedidos/<n>/ no entra."""
+        p = self._crear_pedido_invitado()
+        resp = self.client.get('/pedidos/{}/'.format(p.pk))
+        # Redirige al tracking publico (que requiere token, no ID)
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('/track/', resp.url)
+
+    def test_track_por_token_correcto_muestra_pedido(self):
+        p = self._crear_pedido_invitado()
+        resp = self.client.get('/pedidos/track/{}/'.format(p.token_publico))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Pedido #{}'.format(p.pk))
+
+    def test_track_token_inexistente_404(self):
+        resp = self.client.get('/pedidos/track/token-falso-que-no-existe-1234/')
+        self.assertEqual(resp.status_code, 404)
+
+    def test_usuario_logueado_ajeno_no_ve_detalle(self):
+        p = Pedido.objects.create(
+            usuario=self.user, telefono='+56912345678', metodo_envio='retiro_local',
+            subtotal=Decimal('5000'), costo_envio=Decimal('0'), total=Decimal('5000'),
+        )
+        otro = User.objects.create_user('otro', 'o@t.com', 'pass1234')
+        self.client.force_login(otro)
+        resp = self.client.get('/pedidos/{}/'.format(p.pk))
+        self.assertEqual(resp.status_code, 302)  # redirect a inicio
+        self.assertNotIn('/track/', resp.url)
+
+    def test_cancelar_por_token_funciona(self):
+        p = self._crear_pedido_invitado()
+        resp = self.client.post('/pedidos/track/{}/cancelar/'.format(p.token_publico))
+        self.assertEqual(resp.status_code, 302)
+        p.refresh_from_db()
+        self.assertEqual(p.estado, 'cancelado')
+
+    def test_cancelar_por_token_no_aplica_si_no_pendiente(self):
+        p = self._crear_pedido_invitado()
+        p.estado = 'confirmado'
+        p.save()
+        self.client.post('/pedidos/track/{}/cancelar/'.format(p.token_publico))
+        p.refresh_from_db()
+        self.assertEqual(p.estado, 'confirmado')

@@ -65,6 +65,13 @@ class Pedido(models.Model):
         help_text="Screenshot del comprobante de transferencia (opcional, ayuda a confirmar antes)"
     )
 
+    # Token publico impredecible para URL de tracking sin login (defensa IDOR).
+    # Auto-generado en save() si esta vacio. Se usa en /pedidos/track/<token>/
+    # y en TODOS los emails al cliente. El ID secuencial nunca se expone publicamente.
+    # null=True/blank=True para soportar el AddField inicial; el save() siempre
+    # llena el valor antes de guardar a la BD.
+    token_publico = models.CharField(max_length=64, blank=True, null=True, unique=True)
+
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)
 
@@ -79,6 +86,18 @@ class Pedido(models.Model):
     def __str__(self):
         quien = self.usuario or self.email_cliente or 'invitado'
         return f"Pedido #{self.id} - {quien} - {self.estado}"
+
+    def save(self, *args, **kwargs):
+        if not self.token_publico:
+            import secrets
+            # Asegurar unicidad — en la practica con 32 chars random la colision
+            # es ~10^-19, pero por defensa total iteramos si ocurre.
+            for _ in range(5):
+                candidato = secrets.token_urlsafe(24)
+                if not Pedido.objects.filter(token_publico=candidato).exclude(pk=self.pk).exists():
+                    self.token_publico = candidato
+                    break
+        super().save(*args, **kwargs)
 
     @property
     def es_invitado(self):

@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load aflora_filters %}
+
+{% block title %}Pedido #{{ pedido.pk }} — Aflora Natural{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{% block extra_css %}
+<style>
+    .panel { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1.8rem; margin-bottom:1.5rem; }
+    .panel h4 { font-size:1.1rem; margin-bottom:1rem; }
+    .panel h6 { font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); font-weight:400; margin-bottom:0.7rem; }
+    .info-row { display:flex; justify-content:space-between; padding:0.35rem 0; font-size:0.92rem; }
+    .info-row .label { color:var(--text-muted); }
+
+    .estado-badge {
+        display:inline-block; padding:0.35em 1em; border-radius:20px;
+        font-size:0.82rem; letter-spacing:0.04em; font-weight:600;
+    }
+    .estado-pendiente   { background:#fff3cd; color:#856404; }
+    .estado-confirmado  { background:#d1ecf1; color:#0c5460; }
+    .estado-preparando  { background:#fcefdc; color:#856404; }
+    .estado-enviado     { background:#cce5ff; color:#004085; }
+    .estado-entregado   { background:#d4edda; color:#155724; }
+    .estado-cancelado   { background:#f8d7da; color:#721c24; }
+
+    .items-table td { border-color:var(--rose-light); font-size:0.9rem; }
+
+    .timeline { list-style:none; padding:0; margin:0; position:relative; }
+    .timeline::before { content:''; position:absolute; left:9px; top:0; bottom:0; width:2px; background:var(--rose-light); }
+    .timeline li { position:relative; padding:0 0 1rem 2rem; font-size:0.9rem; color:var(--text-muted); }
+    .timeline li::before {
+        content:''; position:absolute; left:4px; top:6px; width:12px; height:12px;
+        border-radius:50%; background:var(--rose-light); border:2px solid #fff;
+    }
+    .timeline li.activo { color:var(--text); font-weight:600; }
+    .timeline li.activo::before { background:var(--terracotta); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="padding:1.5rem 0; border-bottom:1px solid var(--rose-light); margin-bottom:2rem;">
+    <h2>Pedido #{{ pedido.pk }}</h2>
+    <small class="text-muted">Realizado el {{ pedido.creado|date:"d M Y" }}</small>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="panel">
+            <h4>Estado del pedido</h4>
+            <div class="mb-3">
+                <span class="estado-badge estado-{{ pedido.estado }}">{{ pedido.get_estado_display }}</span>
+            </div>
+            <ul class="timeline">
+                <li class="{% if pedido.estado != 'pendiente' and pedido.estado != 'cancelado' %}activo{% elif pedido.estado == 'pendiente' %}activo{% endif %}">Pedido recibido</li>
+                {% if pedido.estado != 'cancelado' %}
+                <li class="{% if pedido.estado == 'confirmado' or pedido.estado == 'preparando' or pedido.estado == 'enviado' or pedido.estado == 'entregado' %}activo{% endif %}">Pago confirmado</li>
+                <li class="{% if pedido.estado == 'preparando' or pedido.estado == 'enviado' or pedido.estado == 'entregado' %}activo{% endif %}">Preparando envío</li>
+                <li class="{% if pedido.estado == 'enviado' or pedido.estado == 'entregado' %}activo{% endif %}">En camino{% if pedido.codigo_seguimiento %} · Cód: {{ pedido.codigo_seguimiento }}{% endif %}</li>
+                <li class="{% if pedido.estado == 'entregado' %}activo{% endif %}">Entregado</li>
+                {% else %}
+                <li class="activo" style="color:#721c24;">Cancelado</li>
+                {% endif %}
+            </ul>
+
+            {% if pedido.estado == 'pendiente' and pedido.metodo_pago == 'transferencia' %}
+            <a href="{% url 'pedidos:pago_transferencia' pedido.pk %}" class="btn btn-primary btn-sm mt-3">
+                Ver datos para transferir
+            </a>
+            {% endif %}
+
+            {% if pedido.estado == 'pendiente' %}
+            <form method="post" action="{% url 'pedidos:cancelar_pedido_por_token' pedido.token_publico %}"
+                  onsubmit="return confirm('¿Cancelar el pedido #{{ pedido.pk }}? Esta acción no se puede deshacer.');"
+                  class="mt-3">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm" style="border:1px solid #c0392b; color:#c0392b; background:transparent;">
+                    Cancelar pedido
+                </button>
+            </form>
+            <small class="text-muted d-block mt-1" style="font-size:0.78rem;">
+                Solo se puede cancelar mientras está pendiente de pago.
+            </small>
+            {% endif %}
+        </div>
+
+        <div class="panel">
+            <h4>Productos</h4>
+            <table class="table items-table mb-0">
+                {% for item in pedido.items.all %}
+                <tr>
+                    <td>{{ item.nombre_mostrar }} <small class="text-muted">×{{ item.cantidad }}</small></td>
+                    <td class="text-end">{{ item.subtotal|clp }}</td>
+                </tr>
+                {% endfor %}
+                <tr><td class="text-end text-muted">Subtotal</td><td class="text-end">{{ pedido.subtotal|clp }}</td></tr>
+                <tr><td class="text-end text-muted">Envío</td><td class="text-end">{% if pedido.costo_envio %}{{ pedido.costo_envio|clp }}{% else %}Gratis{% endif %}</td></tr>
+                <tr><td class="text-end"><strong>Total</strong></td><td class="text-end precio"><strong>{{ pedido.total|clp }}</strong></td></tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="panel">
+            <h6>Datos del envío</h6>
+            <div class="info-row"><span class="label">Método</span><span>{{ pedido.get_metodo_envio_display }}</span></div>
+            {% if pedido.metodo_envio == 'envio_domicilio' %}
+                <div class="info-row"><span class="label">Comuna</span><span>{{ pedido.comuna }}</span></div>
+                <div class="mt-2 small">{{ pedido.direccion_formateada }}</div>
+            {% endif %}
+            <div class="info-row mt-2"><span class="label">Teléfono</span><span>{{ pedido.telefono }}</span></div>
+        </div>
+
+        <div class="panel">
+            <h6>Pago</h6>
+            <div class="info-row"><span class="label">Método</span><span>{{ pedido.get_metodo_pago_display }}</span></div>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="https://wa.me/56989560937?text=Hola,%20tengo%20una%20duda%20del%20pedido%20%23{{ pedido.pk }}" target="_blank" style="color:var(--terracotta); font-size:0.88rem;">
+                ¿Dudas? Escríbenos por WhatsApp →
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

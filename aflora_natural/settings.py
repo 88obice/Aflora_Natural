@@ -172,6 +172,11 @@ EMAIL_HOST_USER     = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL  = os.getenv('EMAIL_HOST_USER')
 
+# URL base del sitio (usada para links en emails — no se puede construir con
+# request.build_absolute_uri porque los emails los manda el management command
+# o el signal sin request disponible). En produccion: https://tudominio.cl
+BASE_URL = os.getenv('BASE_URL', 'http://localhost:8000').strip()
+
 # Admins que reciben notificaciones de errores (Django los manda en produccion
 # cuando DEBUG=False) y nuevos pedidos (pedidos/views.py:_notificar_admin_nuevo_pedido).
 # Si ADMIN_EMAIL no esta definido, mail_admins hace fallback a DEFAULT_FROM_EMAIL.

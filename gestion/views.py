@@ -43,6 +43,8 @@ Tu pedido #{pid} ya esta en camino!
 {tracking}
 Entrega en: {dir}
 
+Ver estado de tu pedido: {link}
+
 Si tienes dudas: WhatsApp +56 9 8956 0937
 
 -- Aflora Natural
@@ -74,12 +76,17 @@ WhatsApp +56 9 8956 0937
     if estado_nuevo == 'enviado' and pedido.codigo_seguimiento:
         tracking = 'Codigo de seguimiento: {}\n'.format(pedido.codigo_seguimiento)
 
+    # Link de tracking publico (con token impredecible) — funciona sin login
+    base_url = getattr(settings, 'BASE_URL', '').rstrip('/')
+    link_tracking = '{}/pedidos/track/{}/'.format(base_url, pedido.token_publico) if pedido.token_publico else ''
+
     asunto = asunto_tpl.format(pid=pedido.pk)
     cuerpo = cuerpo_tpl.format(
         nombre=pedido.nombre_destinatario,
         pid=pedido.pk,
         tracking=tracking,
         dir=pedido.direccion_formateada(),
+        link=link_tracking,
     )
 
     try:
