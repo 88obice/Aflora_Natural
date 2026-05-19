@@ -16,3 +16,15 @@ def analytics_ids(request):
         'GA4_MEASUREMENT_ID': getattr(settings, 'GA4_MEASUREMENT_ID', ''),
         'META_PIXEL_ID':      getattr(settings, 'META_PIXEL_ID', ''),
     }
+
+
+def banco_info(request):
+    """
+    Expone los datos bancarios al template. Si BANCO.titular esta vacio,
+    transferencia_disponible es False y la opcion no aparece en checkout.
+    """
+    banco = getattr(settings, 'BANCO', {})
+    return {
+        'BANCO': banco,
+        'transferencia_disponible': bool(banco.get('titular') and banco.get('numero_cuenta')),
+    }

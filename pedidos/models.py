@@ -18,6 +18,11 @@ class Pedido(models.Model):
         ('retiro_local',    'Retiro en local'),
     ]
 
+    METODO_PAGO_CHOICES = [
+        ('mercado_pago',  'Mercado Pago'),
+        ('transferencia', 'Transferencia bancaria'),
+    ]
+
     # Usuario opcional para checkout invitado
     usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='pedidos')
 
@@ -51,8 +56,14 @@ class Pedido(models.Model):
     nota_cliente = models.TextField(blank=True, help_text="Comentario opcional del cliente")
 
     # Pago
+    metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO_CHOICES, default='mercado_pago')
     mp_payment_id = models.CharField(max_length=80, blank=True, db_index=True)
     mp_status = models.CharField(max_length=30, blank=True)
+    # Comprobante opcional para transferencias (el cliente sube screenshot)
+    comprobante_transferencia = models.ImageField(
+        upload_to='comprobantes/', blank=True, null=True,
+        help_text="Screenshot del comprobante de transferencia (opcional, ayuda a confirmar antes)"
+    )
 
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)

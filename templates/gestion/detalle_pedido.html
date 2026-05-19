@@ -128,12 +128,103 @@
         </div>
 
         <div class="info-card">
-            <h6>Pago Mercado Pago</h6>
-            {% if pedido.mp_payment_id %}
-                <div class="info-row"><span class="label">Payment ID</span><span class="small">{{ pedido.mp_payment_id }}</span></div>
-                <div class="info-row"><span class="label">Status MP</span><span class="small">{{ pedido.mp_status }}</span></div>
+            <h6>Pago</h6>
+            <div class="info-row"><span class="label">Método</span><span>{{ pedido.get_metodo_pago_display }}</span></div>
+            {% if pedido.metodo_pago == 'mercado_pago' %}
+                {% if pedido.mp_payment_id %}
+                    <div class="info-row"><span class="label">Payment ID</span><span class="small">{{ pedido.mp_payment_id }}</span></div>
+                    <div class="info-row"><span class="label">Status MP</span><span class="small">{{ pedido.mp_status }}</span></div>
+                {% else %}
+                    <small class="text-muted">Sin info de pago aún.</small>
+                {% endif %}
             {% else %}
-                <small class="text-muted">Sin info de pago aún.</small>
+                {# Transferencia bancaria #}
+                {% if pedido.comprobante_transferencia %}
+                    <div class="mb-2"><small class="text-success">✓ Comprobante recibido del cliente</small></div>
+                    <a href="{{ pedido.comprobante_transferencia.url }}" target="_blank" class="d-block mb-2">
+                        <img src="{{ pedido.comprobante_transferencia.url }}" alt="Comprobante"
+                             style="max-width:100%; border:1px solid var(--rose-light); border-radius:3px;">
+                    </a>
+                {% else %}
+                    <div class="mb-2"><small class="text-muted">El cliente aún no subió comprobante.</small></div>
+                {% endif %}
+                {% if pedido.estado == 'pendiente' %}
+                <form method="post" action="{% url 'gestion:confirmar_pago_transferencia' pedido.pk %}"
+                      id="formConfirmarTransferencia"
+                      data-total="{{ pedido.total|floatformat:0 }}">
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <label class="form-label small text-muted" style="font-size:0.75rem;">
+                            Monto recibido en tu cuenta (CLP)
+                        </label>
+                        <input type="number" name="monto_recibido" min="0" step="1"
+                               class="form-control form-control-sm"
+                               placeholder="{{ pedido.total|floatformat:0 }}"
+                               style="border-color:var(--rose-light); font-size:0.88rem;">
+                        <small class="text-muted" style="font-size:0.72rem;">
+                            Opcional. Si lo dejas vacío, confirmamos al monto del pedido sin chequear.
+                        </small>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm w-100" style="font-size:0.82rem;">
+                        Confirmar pago manual
+                    </button>
+                </form>
+                <small class="text-muted d-block mt-1" style="font-size:0.75rem;">
+                    Verifica en tu app del banco. Solo confirma si viste el dinero.
+                </small>
+                <script>
+                    (function() {
+                        const form = document.getElementById('formConfirmarTransferencia');
+                        if (!form) return;
+                        const total = parseInt(form.dataset.total, 10);
+                        form.addEventListener('submit', function(e) {
+                            const input = form.querySelector('input[name="monto_recibido"]');
+                            const raw = (input.value || '').trim();
+                            // Vacio: comportamiento original (preguntar genericamente)
+                            if (!raw) {
+                                if (!confirm('¿Confirmás que viste el depósito en tu cuenta bancaria? Esto descuenta stock y avisa al cliente.')) {
+                                    e.preventDefault();
+                                }
+                                return;
+                            }
+                            const monto = parseInt(raw, 10);
+                            if (isNaN(monto) || monto <= 0) {
+                                e.preventDefault();
+                                alert('El monto recibido debe ser un número mayor a 0.');
+                                return;
+                            }
+                            if (monto === total) {
+                                // Coincide exacto — confirmacion simple
+                                if (!confirm('Confirmá pago: monto coincide con el pedido. Esto descuenta stock y avisa al cliente.')) {
+                                    e.preventDefault();
+                                }
+                                return;
+                            }
+                            // No coincide
+                            const dif = monto - total;
+                            let msg;
+                            if (dif < 0) {
+                                msg = '⚠️ ATENCIÓN: el cliente transfirió MENOS de lo que debía.\n\n' +
+                                      'Monto pedido: $' + total.toLocaleString('es-CL') + '\n' +
+                                      'Monto recibido: $' + monto.toLocaleString('es-CL') + '\n' +
+                                      'FALTA: $' + Math.abs(dif).toLocaleString('es-CL') + '\n\n' +
+                                      'Recomendación: NO confirmes. Contactá al cliente para que complete o cancelá el pedido.\n\n' +
+                                      '¿Confirmar igual?';
+                            } else {
+                                msg = 'El cliente transfirió MÁS de lo debido.\n\n' +
+                                      'Monto pedido: $' + total.toLocaleString('es-CL') + '\n' +
+                                      'Monto recibido: $' + monto.toLocaleString('es-CL') + '\n' +
+                                      'Sobrante: $' + dif.toLocaleString('es-CL') + '\n\n' +
+                                      'Acordate de devolver la diferencia al cliente.\n\n' +
+                                      '¿Confirmar pago?';
+                            }
+                            if (!confirm(msg)) {
+                                e.preventDefault();
+                            }
+                        });
+                    })();
+                </script>
+                {% endif %}
             {% endif %}
         </div>
     </div>

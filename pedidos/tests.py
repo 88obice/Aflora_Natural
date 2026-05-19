@@ -242,3 +242,96 @@ class WebhookMpTests(TestCase):
             content_type='application/json',
         )
         self.assertEqual(resp.status_code, 200)
+
+
+# =========================================================================
+# 4. Transferencia bancaria
+# =========================================================================
+
+class TransferenciaBancariaTests(TestCase):
+    """
+    Flow de transferencia: pedido se crea pendiente sin descontar stock,
+    la duenia lo confirma manual desde gestion, ahi se descuenta y avisa.
+    """
+
+    def setUp(self):
+        self.cat = Categoria.objects.create(nombre='Velas')
+        self.producto = Producto.objects.create(
+            categoria=self.cat, nombre='Vela',
+            descripcion='Test', precio=Decimal('5000'), stock=10,
+        )
+        self.user = User.objects.create_user('cli', 'cli@t.com', 'pass1234')
+
+    def _crear_pedido_transferencia(self):
+        p = Pedido.objects.create(
+            usuario=self.user, telefono='+56912345678',
+            metodo_envio='retiro_local',
+            metodo_pago='transferencia',
+            subtotal=Decimal('10000'), costo_envio=Decimal('0'), total=Decimal('10000'),
+        )
+        ItemPedido.objects.create(
+            pedido=p, producto=self.producto,
+            cantidad=2, precio_unitario=Decimal('5000'),
+            nombre_snapshot=self.producto.nombre,
+        )
+        return p
+
+    def test_pedido_transferencia_no_descuenta_stock_al_crear(self):
+        self._crear_pedido_transferencia()
+        self.producto.refresh_from_db()
+        self.assertEqual(self.producto.stock, 10)  # intacto
+
+    def test_confirmar_transferencia_desde_gestion_descuenta_stock(self):
+        pedido = self._crear_pedido_transferencia()
+        staff = User.objects.create_user('admin', 'a@t.com', 'pass1234', is_staff=True)
+        self.client.force_login(staff)
+        resp = self.client.post(
+            '/gestion/pedidos/{}/confirmar-transferencia/'.format(pedido.pk)
+        )
+        self.assertEqual(resp.status_code, 302)
+        pedido.refresh_from_db()
+        self.producto.refresh_from_db()
+        self.assertEqual(pedido.estado, 'confirmado')
+        self.assertEqual(self.producto.stock, 8)
+
+    def test_confirmar_transferencia_solo_si_pendiente(self):
+        pedido = self._crear_pedido_transferencia()
+        pedido.estado = 'cancelado'
+        pedido.save()
+        staff = User.objects.create_user('admin', 'a@t.com', 'pass1234', is_staff=True)
+        self.client.force_login(staff)
+        self.client.post('/gestion/pedidos/{}/confirmar-transferencia/'.format(pedido.pk))
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'cancelado')  # no cambia
+        self.producto.refresh_from_db()
+        self.assertEqual(self.producto.stock, 10)  # no toca stock
+
+    def test_confirmar_no_aplica_a_pedidos_mp(self):
+        """No deberia poder marcar un pedido MP como 'confirmado por transferencia'."""
+        pedido = self._crear_pedido_transferencia()
+        pedido.metodo_pago = 'mercado_pago'
+        pedido.save()
+        staff = User.objects.create_user('admin', 'a@t.com', 'pass1234', is_staff=True)
+        self.client.force_login(staff)
+        self.client.post('/gestion/pedidos/{}/confirmar-transferencia/'.format(pedido.pk))
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'pendiente')
+
+    def test_subir_comprobante_guarda_archivo(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        pedido = self._crear_pedido_transferencia()
+        # 1x1 PNG transparente
+        png_bytes = (
+            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
+            b'\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xfc\xcf'
+            b'\xc0P\x0f\x00\x05\x01\x01\xff\xab\xcd\xeeo\x00\x00\x00\x00IEND\xaeB`\x82'
+        )
+        comprobante = SimpleUploadedFile('compr.png', png_bytes, content_type='image/png')
+        self.client.force_login(self.user)
+        resp = self.client.post(
+            '/pedidos/{}/comprobante/'.format(pedido.pk),
+            data={'comprobante': comprobante},
+        )
+        self.assertEqual(resp.status_code, 302)
+        pedido.refresh_from_db()
+        self.assertTrue(pedido.comprobante_transferencia)

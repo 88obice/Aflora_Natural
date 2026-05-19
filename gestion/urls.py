@@ -7,6 +7,7 @@ urlpatterns = [
     path('',           views.dashboard, name='dashboard'),
     path('pedidos/',   views.lista_pedidos, name='pedidos'),
     path('pedidos/<int:pk>/', views.detalle_pedido, name='detalle_pedido'),
+    path('pedidos/<int:pk>/confirmar-transferencia/', views.confirmar_pago_transferencia, name='confirmar_pago_transferencia'),
     path('pedidos/exportar/', views.exportar_pedidos_csv, name='exportar_pedidos'),
     path('productos/', views.lista_productos, name='productos'),
     path('productos/nuevo/', views.crear_producto, name='crear_producto'),

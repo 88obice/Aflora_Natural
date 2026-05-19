@@ -126,6 +126,59 @@ Ver en gestion: /gestion/pedidos/{pid}/
         pass
 
 
+def _notificar_admin_transferencia_pendiente(pedido):
+    """
+    Notifica al admin que entro un pedido por transferencia que espera
+    confirmacion manual de pago. Es distinto al email de MP confirmado
+    porque acA todavia no se descuenta stock — la duenia tiene que
+    verificar el deposito en su cuenta bancaria y confirmar desde gestion.
+    """
+    items_texto = '\n'.join(
+        '  - {} x{}'.format(it.nombre_mostrar(), it.cantidad)
+        for it in pedido.items.all()
+    )
+    mensaje = """Nuevo pedido POR TRANSFERENCIA #{pid} (esperando deposito)
+
+Cliente: {nombre} ({email})
+Telefono: {tel}
+Direccion: {dir}
+
+Items:
+{items}
+
+TOTAL: ${tot:,}
+
+ACCION REQUERIDA: revisar tu cuenta bancaria y confirmar el pago
+desde /gestion/pedidos/{pid}/ cuando llegue el deposito.
+
+Ver en gestion: /gestion/pedidos/{pid}/
+""".format(
+        pid=pedido.pk,
+        nombre=pedido.nombre_destinatario,
+        email=pedido.email_destinatario or 'sin email',
+        tel=pedido.telefono,
+        dir=pedido.direccion_formateada(),
+        items=items_texto,
+        tot=int(pedido.total),
+    ).replace(',', '.')
+    try:
+        if getattr(settings, 'ADMINS', None):
+            mail_admins(
+                subject='Pedido por transferencia #{} (esperando deposito)'.format(pedido.pk),
+                message=mensaje, fail_silently=True,
+            )
+        elif settings.DEFAULT_FROM_EMAIL:
+            send_mail(
+                subject='Pedido por transferencia #{} -- Aflora Natural'.format(pedido.pk),
+                message=mensaje,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.DEFAULT_FROM_EMAIL],
+                fail_silently=True,
+            )
+    except Exception:
+        pass
+
+
 def _crear_preferencia_mp(pedido, request):
     sdk = mercadopago.SDK(settings.MP_ACCESS_TOKEN)
     base_url = request.build_absolute_uri('/')[:-1]
@@ -258,6 +311,13 @@ def crear_pedido(request):
         costo_envio = calcular_costo_envio(metodo, comuna, region, subtotal)
         total = subtotal + costo_envio
 
+        # Metodo de pago: por defecto MP, transferencia solo si habilitada
+        metodo_pago = request.POST.get('metodo_pago', 'mercado_pago')
+        if metodo_pago not in ('mercado_pago', 'transferencia'):
+            metodo_pago = 'mercado_pago'
+        if metodo_pago == 'transferencia' and not settings.BANCO.get('titular'):
+            metodo_pago = 'mercado_pago'  # fallback si banco no configurado
+
         try:
             with transaction.atomic():
                 pedido = Pedido.objects.create(
@@ -265,6 +325,7 @@ def crear_pedido(request):
                     nombre_cliente=nombre if not request.user.is_authenticated else '',
                     email_cliente=email if not request.user.is_authenticated else '',
                     metodo_envio=metodo,
+                    metodo_pago=metodo_pago,
                     calle_numero=calle, depto=depto,
                     comuna=comuna, region=region, referencia=referencia,
                     telefono=telefono,
@@ -292,10 +353,15 @@ def crear_pedido(request):
             messages.error(request, 'Error al crear el pedido: {}'.format(str(e)[:120]))
             return redirect('carrito:ver_carrito')
 
-        logger.info('Pedido #%s creado (subtotal=%s envio=%s total=%s)',
-                    pedido.pk, subtotal, costo_envio, total)
+        logger.info('Pedido #%s creado (subtotal=%s envio=%s total=%s metodo_pago=%s)',
+                    pedido.pk, subtotal, costo_envio, total, metodo_pago)
 
-        # Redirigir a MP
+        # Transferencia: redirigir a pantalla con datos bancarios e instrucciones
+        if metodo_pago == 'transferencia':
+            _notificar_admin_transferencia_pendiente(pedido)
+            return redirect('pedidos:pago_transferencia', pk=pedido.pk)
+
+        # Mercado Pago: crear preferencia y redirigir al checkout MP
         try:
             checkout_url = _crear_preferencia_mp(pedido, request)
             if checkout_url:
@@ -338,6 +404,41 @@ def detalle_pedido(request, pk):
     if request.user.is_authenticated and pedido.usuario and pedido.usuario != request.user and not request.user.is_staff:
         return redirect('catalogo:inicio')
     return render(request, 'pedidos/detalle_pedido.html', {'pedido': pedido})
+
+
+def pago_transferencia(request, pk):
+    """
+    Muestra los datos bancarios al cliente y un form opcional para subir
+    el comprobante de transferencia. Accesible tras crear pedido con
+    metodo_pago='transferencia'.
+    """
+    pedido = get_object_or_404(Pedido, pk=pk)
+    if pedido.metodo_pago != 'transferencia':
+        return redirect('pedidos:detalle_pedido', pk=pedido.pk)
+    return render(request, 'pedidos/pago_transferencia.html', {
+        'pedido': pedido,
+    })
+
+
+@require_POST
+def subir_comprobante(request, pk):
+    """
+    El cliente sube screenshot del comprobante de transferencia.
+    No cambia el estado del pedido — la duenia confirma manual desde gestion.
+    """
+    pedido = get_object_or_404(Pedido, pk=pk)
+    if pedido.metodo_pago != 'transferencia':
+        messages.error(request, 'Este pedido no es por transferencia.')
+        return redirect('pedidos:detalle_pedido', pk=pedido.pk)
+    archivo = request.FILES.get('comprobante')
+    if not archivo:
+        messages.error(request, 'Adjunta una imagen del comprobante.')
+        return redirect('pedidos:pago_transferencia', pk=pedido.pk)
+    pedido.comprobante_transferencia = archivo
+    pedido.save(update_fields=['comprobante_transferencia', 'actualizado'])
+    messages.success(request, 'Comprobante recibido. Te avisaremos por email cuando confirmemos el pago.')
+    logger.info('Comprobante de transferencia subido para pedido #%s', pedido.pk)
+    return redirect('pedidos:pago_transferencia', pk=pedido.pk)
 
 
 # --- Callbacks de Mercado Pago (back_urls) -------------------------------

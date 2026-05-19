@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load aflora_filters %}
+
+{% block title %}Datos de transferencia — Pedido #{{ pedido.pk }} — Aflora Natural{% endblock %}
+
+{% block extra_css %}
+<style>
+    .panel { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:2rem; margin-bottom:1.5rem; }
+    .panel h4 { font-size:1.15rem; margin-bottom:1rem; }
+    .panel h6 { font-size:0.92rem; color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.8rem; }
+    .banco-row { display:flex; justify-content:space-between; padding:0.55rem 0; border-bottom:1px dashed var(--rose-light); font-size:0.95rem; }
+    .banco-row:last-child { border-bottom:none; }
+    .banco-row .label { color:var(--text-muted); }
+    .banco-row .value { font-weight:600; font-family:monospace; user-select:all; }
+    .total-box { background:var(--cream-dark); border-radius:4px; padding:1rem 1.5rem; text-align:center; margin:1rem 0; }
+    .total-box .total-num { font-family:'Playfair Display', serif; font-size:1.8rem; color:var(--terracotta); }
+    .total-box .total-label { font-size:0.85rem; color:var(--text-muted); }
+    .form-control { border-color:var(--rose-light); border-radius:2px; }
+    .comprobante-actual { padding:0.8rem; background:#d4edda; color:#155724; border-radius:3px; margin-bottom:1rem; font-size:0.9rem; }
+    .pasos { list-style:none; padding:0; margin:0; }
+    .pasos li { padding:0.5rem 0 0.5rem 2rem; position:relative; font-size:0.92rem; }
+    .pasos li::before { content:counter(item); counter-increment:item; position:absolute; left:0; top:0.4rem; width:1.4rem; height:1.4rem; background:var(--terracotta); color:#fff; border-radius:50%; text-align:center; font-size:0.78rem; line-height:1.4rem; font-weight:700; }
+    .pasos { counter-reset:item; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="padding:1.5rem 0; border-bottom:1px solid var(--rose-light); margin-bottom:2rem;">
+    <h2>Pedido #{{ pedido.pk }} — Esperando pago</h2>
+    <small class="text-muted">Tu pedido fue registrado. Para confirmarlo, transfiere el monto a la cuenta indicada.</small>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="panel">
+            <h4>Datos bancarios</h4>
+            <div class="banco-row">
+                <span class="label">Banco</span>
+                <span class="value">{{ BANCO.banco }}</span>
+            </div>
+            <div class="banco-row">
+                <span class="label">Tipo de cuenta</span>
+                <span class="value">{{ BANCO.tipo_cuenta }}</span>
+            </div>
+            <div class="banco-row">
+                <span class="label">Número de cuenta</span>
+                <span class="value">{{ BANCO.numero_cuenta }}</span>
+            </div>
+            <div class="banco-row">
+                <span class="label">Titular</span>
+                <span class="value">{{ BANCO.titular }}</span>
+            </div>
+            <div class="banco-row">
+                <span class="label">RUT</span>
+                <span class="value">{{ BANCO.rut }}</span>
+            </div>
+            {% if BANCO.email_aviso %}
+            <div class="banco-row">
+                <span class="label">Email para aviso</span>
+                <span class="value">{{ BANCO.email_aviso }}</span>
+            </div>
+            {% endif %}
+
+            <div class="total-box">
+                <div class="total-label">Monto a transferir</div>
+                <div class="total-num">{{ pedido.total|clp }}</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h4>Cómo continuar</h4>
+            <ol class="pasos">
+                <li>Transfiere <strong>{{ pedido.total|clp }}</strong> a la cuenta de arriba desde tu app del banco.</li>
+                <li>En el asunto de la transferencia pon: <strong>Pedido #{{ pedido.pk }}</strong> (ayuda a identificarte rápido).</li>
+                <li>(Opcional) Sube acá un screenshot del comprobante. Esto acelera la confirmación.</li>
+                <li>Te enviaremos un email cuando confirmemos el pago. Normalmente revisamos en 24 hrs hábiles.</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="panel">
+            <h6>Subir comprobante (opcional)</h6>
+            {% if pedido.comprobante_transferencia %}
+                <div class="comprobante-actual">
+                    ✓ Comprobante recibido. Lo revisamos pronto.
+                    <div class="mt-2"><small><a href="{{ pedido.comprobante_transferencia.url }}" target="_blank" style="color:#155724;">Ver el comprobante subido →</a></small></div>
+                </div>
+                <small class="text-muted">¿Subiste mal? Puedes subirlo de nuevo.</small>
+            {% endif %}
+            <form method="post" action="{% url 'pedidos:subir_comprobante' pedido.pk %}" enctype="multipart/form-data" class="mt-2">
+                {% csrf_token %}
+                <input type="file" name="comprobante" accept="image/*" required class="form-control mb-2">
+                <button type="submit" class="btn btn-primary w-100" style="padding:0.6rem; letter-spacing:0.06em; text-transform:uppercase; font-size:0.82rem;">
+                    {% if pedido.comprobante_transferencia %}Subir de nuevo{% else %}Enviar comprobante{% endif %}
+                </button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h6>Resumen del pedido</h6>
+            {% for item in pedido.items.all %}
+            <div class="d-flex justify-content-between mb-2" style="font-size:0.88rem;">
+                <span>{{ item.cantidad }}× {{ item.nombre_mostrar }}</span>
+                <span>{{ item.subtotal|clp }}</span>
+            </div>
+            {% endfor %}
+            <hr style="border-color:var(--rose-light);">
+            <div class="d-flex justify-content-between" style="font-size:0.88rem;">
+                <span class="text-muted">Subtotal</span><span>{{ pedido.subtotal|clp }}</span>
+            </div>
+            <div class="d-flex justify-content-between" style="font-size:0.88rem;">
+                <span class="text-muted">Envío</span>
+                <span>{% if pedido.costo_envio == 0 %}Gratis{% else %}{{ pedido.costo_envio|clp }}{% endif %}</span>
+            </div>
+            <div class="d-flex justify-content-between mt-2" style="font-size:1.05rem; font-weight:700; color:var(--terracotta);">
+                <span>Total</span><span>{{ pedido.total|clp }}</span>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="https://wa.me/56989560937?text=Hola,%20tengo%20una%20duda%20del%20pedido%20%23{{ pedido.pk }}" target="_blank" style="color:var(--terracotta); font-size:0.88rem;">
+                ¿Dudas? Escríbenos por WhatsApp →
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

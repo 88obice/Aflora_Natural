@@ -121,6 +121,32 @@
                     <textarea name="nota" class="form-control" rows="2" maxlength="500" placeholder="Algo que debamos saber"></textarea>
                 </div>
             </div>
+
+            {% if transferencia_disponible %}
+            <div class="checkout-section">
+                <h5>Método de pago</h5>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="metodo-envio-card active" data-pago="mercado_pago">
+                            <label>
+                                <input type="radio" name="metodo_pago" value="mercado_pago" checked>
+                                Mercado Pago
+                                <div class="text-muted small mt-1">Tarjeta, débito, transferencia inmediata.</div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metodo-envio-card" data-pago="transferencia">
+                            <label>
+                                <input type="radio" name="metodo_pago" value="transferencia">
+                                Transferencia bancaria
+                                <div class="text-muted small mt-1">Sin comisión. Te damos los datos al confirmar.</div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-lg-5">
@@ -146,10 +172,10 @@
                     <span id="totalMostrar">{{ subtotal|clp }}</span>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100 mt-3" style="padding:0.8rem; letter-spacing:0.08em; text-transform:uppercase; font-size:0.88rem;">
+                <button type="submit" class="btn btn-primary w-100 mt-3" id="btnContinuar" style="padding:0.8rem; letter-spacing:0.08em; text-transform:uppercase; font-size:0.88rem;">
                     Pagar con Mercado Pago
                 </button>
-                <small class="text-muted d-block mt-2 text-center">Serás redirigido a Mercado Pago para pagar.</small>
+                <small class="text-muted d-block mt-2 text-center" id="hintPago">Serás redirigido a Mercado Pago para pagar.</small>
             </div>
         </div>
     </div>
@@ -209,5 +235,22 @@
     document.querySelector('select[name="comuna"]').addEventListener('change', actualizar);
     document.querySelector('input[name="region"]').addEventListener('input', actualizar);
     actualizar();
+
+    // Cambio de metodo de pago: actualizar texto del boton y hint
+    document.querySelectorAll('input[name="metodo_pago"]').forEach(r => {
+        r.addEventListener('change', function() {
+            document.querySelectorAll('[data-pago]').forEach(c => c.classList.remove('active'));
+            this.closest('.metodo-envio-card').classList.add('active');
+            const btn = document.getElementById('btnContinuar');
+            const hint = document.getElementById('hintPago');
+            if (this.value === 'transferencia') {
+                btn.textContent = 'Confirmar pedido';
+                hint.textContent = 'Te mostraremos los datos bancarios al confirmar.';
+            } else {
+                btn.textContent = 'Pagar con Mercado Pago';
+                hint.textContent = 'Serás redirigido a Mercado Pago para pagar.';
+            }
+        });
+    });
 </script>
 {% endblock %}

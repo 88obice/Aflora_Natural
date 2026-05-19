@@ -78,6 +78,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'carrito.context_processors.carrito_contador',
                 'aflora_natural.context_processors.analytics_ids',
+                'aflora_natural.context_processors.banco_info',
             ],
         },
     },
@@ -185,6 +186,18 @@ if _admin_email:
 # las variables en Railway. Sin tracking en local/desarrollo.
 GA4_MEASUREMENT_ID = os.getenv('GA4_MEASUREMENT_ID', '').strip()
 META_PIXEL_ID      = os.getenv('META_PIXEL_ID', '').strip()
+
+# ── Transferencia bancaria (datos para checkout) ────────────────────────────
+# Si BANCO_TITULAR vacio, la opcion "transferencia" no aparece en checkout.
+# Cuando la duenia entregue sus datos reales, se pegan en Railway.
+BANCO = {
+    'titular':       os.getenv('BANCO_TITULAR', '').strip(),
+    'rut':           os.getenv('BANCO_RUT', '').strip(),
+    'banco':         os.getenv('BANCO_NOMBRE', '').strip(),
+    'tipo_cuenta':   os.getenv('BANCO_TIPO_CUENTA', '').strip(),
+    'numero_cuenta': os.getenv('BANCO_NUMERO_CUENTA', '').strip(),
+    'email_aviso':   os.getenv('BANCO_EMAIL_AVISO', '').strip(),
+}
 
 
 # ── Mensajes → clases Bootstrap ────────────────────────────────────────────

@@ -267,6 +267,72 @@ def detalle_pedido(request, pk):
 
 @login_required
 @user_passes_test(solo_staff, login_url='catalogo:inicio')
+def confirmar_pago_transferencia(request, pk):
+    """
+    La duenia confirma manualmente que vio el deposito en su cuenta bancaria.
+    Reutiliza _confirmar_pedido() de pedidos para descontar stock y mandar emails.
+
+    Opcionalmente recibe `monto_recibido` para registrar discrepancias.
+    El JS del template ya advierte si no coincide; aca solo logueamos y
+    avisamos en el mensaje flash.
+    """
+    if request.method != 'POST':
+        return redirect('gestion:detalle_pedido', pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    if pedido.metodo_pago != 'transferencia':
+        messages.error(request, 'Este pedido no es por transferencia.')
+        return redirect('gestion:detalle_pedido', pk=pk)
+    if pedido.estado != 'pendiente':
+        messages.warning(request, 'Este pedido ya no está pendiente (estado: {}).'.format(pedido.get_estado_display()))
+        return redirect('gestion:detalle_pedido', pk=pk)
+
+    # Validacion opcional del monto recibido
+    monto_recibido_raw = request.POST.get('monto_recibido', '').strip()
+    discrepancia_msg = ''
+    if monto_recibido_raw:
+        try:
+            monto_recibido = int(monto_recibido_raw)
+        except (TypeError, ValueError):
+            messages.error(request, 'Monto recibido inválido.')
+            return redirect('gestion:detalle_pedido', pk=pk)
+        total_pedido = int(pedido.total)
+        if monto_recibido != total_pedido:
+            diferencia = monto_recibido - total_pedido
+            if diferencia < 0:
+                discrepancia_msg = (
+                    ' ⚠ Atención: cliente transfirió ${} pero el pedido era ${} (faltan ${}). '
+                    'Contactá al cliente.'
+                ).format(
+                    '{:,}'.format(monto_recibido).replace(',', '.'),
+                    '{:,}'.format(total_pedido).replace(',', '.'),
+                    '{:,}'.format(abs(diferencia)).replace(',', '.'),
+                )
+            else:
+                discrepancia_msg = (
+                    ' Cliente transfirió ${} (${} de más). Acordate de devolverle la diferencia.'
+                ).format(
+                    '{:,}'.format(monto_recibido).replace(',', '.'),
+                    '{:,}'.format(diferencia).replace(',', '.'),
+                )
+            logger.warning(
+                'Pedido #%s: discrepancia en monto transferencia. Pedido=%s Recibido=%s Dif=%s',
+                pedido.pk, total_pedido, monto_recibido, diferencia,
+            )
+
+    from pedidos.views import _confirmar_pedido
+    p = _confirmar_pedido(pedido, mp_status='transferencia_manual')
+    if p.estado == 'confirmado':
+        messages.success(
+            request,
+            'Pago confirmado. Stock descontado y email enviado al cliente.' + discrepancia_msg
+        )
+    else:
+        messages.error(request, 'No se pudo confirmar (estado quedó en "{}"). Revisa stock.'.format(p.get_estado_display()))
+    return redirect('gestion:detalle_pedido', pk=pk)
+
+
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
 def exportar_pedidos_csv(request):
     """Exporta pedidos filtrados a CSV (para SII / contabilidad)."""
     estado = request.GET.get('estado', '')
