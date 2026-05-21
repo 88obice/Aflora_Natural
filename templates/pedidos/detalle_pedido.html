@@ -1,30 +1,62 @@
 {% extends 'base.html' %}
+{% load aflora_filters %}
 
 {% block title %}Pedido #{{ pedido.id }} — Aflora Natural{% endblock %}
 
 {% block extra_css %}
 <style>
     .page-header { padding: 1.5rem 0 1.2rem; border-bottom: 1px solid var(--rose-light); margin-bottom: 2rem; }
-    .info-panel, .items-panel {
+
+    .panel {
         background: #fff;
         border: 1px solid var(--rose-light);
         border-radius: 4px;
         padding: 1.8rem;
+        margin-bottom: 1.5rem;
     }
-    .info-panel .label { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.15rem; }
-    .info-panel .value { font-size: 0.95rem; color: var(--text); margin-bottom: 1rem; }
+    .panel h4 { font-size: 1.1rem; margin-bottom: 1rem; }
+    .panel h6 {
+        font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--text-muted); font-weight: 400; margin-bottom: 0.7rem;
+    }
+    .info-row { display: flex; justify-content: space-between; padding: 0.35rem 0; font-size: 0.92rem; }
+    .info-row .label { color: var(--text-muted); }
+
     .estado-badge {
-        display: inline-block;
-        padding: 0.3em 0.9em;
-        border-radius: 2px;
-        font-size: 0.8rem;
-        letter-spacing: 0.06em;
-        background-color: var(--rose-light);
-        color: var(--terracotta);
+        display: inline-block; padding: 0.35em 1em; border-radius: 20px;
+        font-size: 0.82rem; letter-spacing: 0.04em; font-weight: 600;
     }
+    .estado-pendiente   { background:#fff3cd; color:#856404; }
+    .estado-confirmado  { background:#d1ecf1; color:#0c5460; }
+    .estado-preparando  { background:#fcefdc; color:#856404; }
+    .estado-enviado     { background:#cce5ff; color:#004085; }
+    .estado-entregado   { background:#d4edda; color:#155724; }
+    .estado-cancelado   { background:#f8d7da; color:#721c24; }
+
     .items-table td { border-color: var(--rose-light); font-size: 0.9rem; }
-    .items-total { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--terracotta); }
-    .section-label { font-family: 'Playfair Display', serif; font-size: 1.1rem; margin-bottom: 1.2rem; }
+
+    .timeline { list-style: none; padding: 0; margin: 0; position: relative; }
+    .timeline::before {
+        content: ''; position: absolute; left: 9px; top: 0; bottom: 0;
+        width: 2px; background: var(--rose-light);
+    }
+    .timeline li {
+        position: relative; padding: 0 0 1rem 2rem;
+        font-size: 0.9rem; color: var(--text-muted);
+    }
+    .timeline li::before {
+        content: ''; position: absolute; left: 4px; top: 6px;
+        width: 12px; height: 12px; border-radius: 50%;
+        background: var(--rose-light); border: 2px solid #fff;
+    }
+    .timeline li.activo { color: var(--text); font-weight: 600; }
+    .timeline li.activo::before { background: var(--terracotta); }
+
+    .nota-cliente {
+        background: #fafafa; border-left: 3px solid var(--rose-light);
+        padding: 0.7rem 1rem; font-size: 0.9rem; color: var(--text-muted);
+        font-style: italic;
+    }
 </style>
 {% endblock %}
 
@@ -32,61 +64,100 @@
 
 <div class="page-header">
     <h2>Pedido <span style="color:var(--terracotta);">#{{ pedido.id }}</span></h2>
+    <small class="text-muted">Realizado el {{ pedido.creado|date:"d M Y, H:i" }}</small>
 </div>
 
 <div class="row g-4">
-    <!-- Info -->
-    <div class="col-md-5">
-        <div class="info-panel">
-            <div class="section-label">Información</div>
-            <div class="label">Estado</div>
-            <div class="value"><span class="estado-badge">{{ pedido.get_estado_display }}</span></div>
-            <div class="label">Fecha</div>
-            <div class="value">{{ pedido.creado|date:"d/m/Y H:i" }}</div>
-            <div class="label">Dirección de entrega</div>
-            <div class="value">{{ pedido.direccion_entrega }}</div>
-            <div class="label">Teléfono</div>
-            <div class="value">{{ pedido.telefono }}</div>
+    <!-- Columna izquierda: estado + envio + pago -->
+    <div class="col-lg-5">
+        <div class="panel">
+            <h4>Estado del pedido</h4>
+            <div class="mb-3">
+                <span class="estado-badge estado-{{ pedido.estado }}">{{ pedido.get_estado_display }}</span>
+            </div>
+            <ul class="timeline">
+                <li class="activo">Pedido recibido</li>
+                {% if pedido.estado != 'cancelado' %}
+                    <li class="{% if pedido.estado == 'confirmado' or pedido.estado == 'preparando' or pedido.estado == 'enviado' or pedido.estado == 'entregado' %}activo{% endif %}">Pago confirmado</li>
+                    <li class="{% if pedido.estado == 'preparando' or pedido.estado == 'enviado' or pedido.estado == 'entregado' %}activo{% endif %}">Preparando envío</li>
+                    <li class="{% if pedido.estado == 'enviado' or pedido.estado == 'entregado' %}activo{% endif %}">En camino{% if pedido.codigo_seguimiento %} · Cód: {{ pedido.codigo_seguimiento }}{% endif %}</li>
+                    <li class="{% if pedido.estado == 'entregado' %}activo{% endif %}">Entregado</li>
+                {% else %}
+                    <li class="activo" style="color:#721c24;">Cancelado</li>
+                {% endif %}
+            </ul>
 
             {% if pedido.estado == 'pendiente' and pedido.metodo_pago == 'transferencia' %}
-            <a href="{% url 'pedidos:pago_transferencia' pedido.pk %}" class="btn btn-primary btn-sm w-100 mb-2">
-                Ver datos de transferencia
-            </a>
+                <a href="{% url 'pedidos:pago_transferencia' pedido.pk %}" class="btn btn-primary btn-sm w-100 mt-3">
+                    Ver datos para transferir
+                </a>
             {% endif %}
 
             {% if pedido.estado == 'pendiente' and user.is_authenticated and pedido.usuario == user %}
-            <form method="post" action="{% url 'pedidos:cancelar_pedido' pedido.pk %}"
-                  onsubmit="return confirm('¿Cancelar este pedido? Esta acción no se puede deshacer.');"
-                  class="mt-2">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-secondary btn-sm w-100" style="border-color:#c0392b; color:#c0392b;">
-                    Cancelar pedido
-                </button>
-            </form>
-            <small class="text-muted d-block mt-1" style="font-size:0.78rem;">
-                Solo se puede cancelar mientras está pendiente de pago.
-            </small>
+                <form method="post" action="{% url 'pedidos:cancelar_pedido' pedido.pk %}"
+                      onsubmit="return confirm('¿Cancelar el pedido #{{ pedido.pk }}? Esta acción no se puede deshacer.');"
+                      class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm w-100" style="border:1px solid #c0392b; color:#c0392b; background:transparent;">
+                        Cancelar pedido
+                    </button>
+                </form>
+                <small class="text-muted d-block mt-1" style="font-size:0.78rem;">
+                    Solo se puede cancelar mientras está pendiente de pago.
+                </small>
             {% endif %}
         </div>
+
+        <div class="panel">
+            <h6>Datos del envío</h6>
+            <div class="info-row"><span class="label">Método</span><span>{{ pedido.get_metodo_envio_display }}</span></div>
+            {% if pedido.metodo_envio == 'envio_domicilio' %}
+                <div class="info-row"><span class="label">Comuna</span><span>{{ pedido.comuna }}</span></div>
+                <div class="mt-2 small">{{ pedido.direccion_formateada }}</div>
+                {% if pedido.referencia %}
+                    <div class="mt-2 small text-muted">Referencia: {{ pedido.referencia }}</div>
+                {% endif %}
+            {% endif %}
+            <div class="info-row mt-2"><span class="label">Teléfono</span><span>{{ pedido.telefono }}</span></div>
+        </div>
+
+        <div class="panel">
+            <h6>Pago</h6>
+            <div class="info-row"><span class="label">Método</span><span>{{ pedido.get_metodo_pago_display }}</span></div>
+            {% if pedido.mp_status %}
+                <div class="info-row"><span class="label">Estado MP</span><span>{{ pedido.mp_status }}</span></div>
+            {% endif %}
+        </div>
+
+        {% if pedido.nota_cliente %}
+            <div class="panel">
+                <h6>Tu nota</h6>
+                <div class="nota-cliente">{{ pedido.nota_cliente }}</div>
+            </div>
+        {% endif %}
     </div>
 
-    <!-- Productos -->
-    <div class="col-md-7">
-        <div class="items-panel">
-            <div class="section-label">Productos</div>
-            <table class="table items-table">
+    <!-- Columna derecha: productos -->
+    <div class="col-lg-7">
+        <div class="panel">
+            <h4>Productos</h4>
+            <table class="table items-table mb-0">
                 {% for item in pedido.items.all %}
-                <tr>
-                    <td>{{ item.producto.nombre }}</td>
-                    <td class="text-muted">×{{ item.cantidad }}</td>
-                    <td class="text-end">${{ item.subtotal }}</td>
-                </tr>
+                    <tr>
+                        <td>{{ item.nombre_mostrar }} <small class="text-muted">×{{ item.cantidad }}</small></td>
+                        <td class="text-end">{{ item.subtotal|clp }}</td>
+                    </tr>
                 {% endfor %}
-                <tr style="border-top: 2px solid var(--rose-light);">
-                    <td colspan="2" class="text-end fw-bold" style="border-bottom:0;">Total</td>
-                    <td class="text-end items-total" style="border-bottom:0;">${{ pedido.total }}</td>
-                </tr>
+                <tr><td class="text-end text-muted">Subtotal</td><td class="text-end">{{ pedido.subtotal|clp }}</td></tr>
+                <tr><td class="text-end text-muted">Envío</td><td class="text-end">{% if pedido.costo_envio %}{{ pedido.costo_envio|clp }}{% else %}Gratis{% endif %}</td></tr>
+                <tr><td class="text-end"><strong>Total</strong></td><td class="text-end precio"><strong>{{ pedido.total|clp }}</strong></td></tr>
             </table>
+        </div>
+
+        <div class="text-center">
+            <a href="https://wa.me/56989560937?text=Hola,%20tengo%20una%20duda%20del%20pedido%20%23{{ pedido.pk }}" target="_blank" style="color:var(--terracotta); font-size:0.88rem;">
+                ¿Dudas? Escríbenos por WhatsApp →
+            </a>
         </div>
     </div>
 </div>
