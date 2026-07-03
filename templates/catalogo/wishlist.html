@@ -3,31 +3,44 @@
 
 {% block title %}Mis favoritos — Aflora Natural{% endblock %}
 
+{% block extra_css %}
+<style>
+    .page-header { padding: 0.5rem 0 1.4rem; border-bottom: 1px solid var(--line); margin-bottom: 2rem; }
+    a.product-card { text-decoration: none; color: inherit; }
+    .product-card:hover .card-title { color: var(--terracotta); }
+    .product-card .ph { position: relative; aspect-ratio: 1/1; overflow: hidden; border-radius: 6px 6px 0 0; }
+    .product-card .ph img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+    .product-card:hover .ph img { transform: scale(1.06); }
+    .product-card .placeholder-img { width: 100%; height: 100%; background: linear-gradient(135deg, #F0E8DE 0%, #EDD9D1 100%); display: flex; align-items: center; justify-content: center; }
+    .product-card .card-title { font-family: 'Playfair Display', serif; font-size: 1rem; }
+    .product-card .card-body { padding: 1.1rem 1.2rem; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header" style="padding:2rem 0 1.5rem; border-bottom:1px solid var(--rose-light); margin-bottom:2rem;">
+<div class="page-header">
     <h2 style="margin-bottom:0.2rem;">Mis favoritos</h2>
-    <p style="color:var(--text-muted); font-size:0.9rem;">Productos que guardaste para más tarde</p>
+    <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:0;">Productos que guardaste para más tarde</p>
 </div>
 
 <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
     {% for item in items %}
     <div class="col">
-        <div class="card h-100 shadow-sm">
-            {% if item.producto.imagen %}
-                <img src="{{ item.producto.imagen.url }}" class="card-img-top" alt="{{ item.producto.nombre }}" style="height:220px; object-fit:cover;">
-            {% endif %}
-            <div class="card-body d-flex flex-column">
-                <div style="font-family:'Playfair Display', serif; font-size:1rem;">{{ item.producto.nombre }}</div>
-                <div class="precio my-2">{{ item.producto.precio_desde|clp }}</div>
-                <div class="d-flex gap-2 mt-auto">
-                    <a href="{{ item.producto.get_absolute_url }}" class="btn btn-outline-primary btn-sm flex-grow-1">Ver</a>
-                    <form method="post" action="{% url 'catalogo:toggle_wishlist' item.producto.pk %}">
-                        {% csrf_token %}
-                        <button class="btn btn-outline-secondary btn-sm" title="Quitar">♥</button>
-                    </form>
-                </div>
+        <a href="{{ item.producto.get_absolute_url }}" class="card h-100 product-card">
+            <div class="ph">
+                {% if item.producto.imagen %}
+                    <img src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}">
+                {% else %}
+                    <div class="placeholder-img">
+                        <svg width="72" height="92" viewBox="0 0 80 100" fill="none"><rect x="24" y="42" width="32" height="50" rx="6" fill="#fff" stroke="#C9A99A" stroke-width="1.5"/><path d="M40 42c6-8 6-17 0-23-6 6-6 15 0 23z" fill="#F0C27B"/><path d="M40 20v-5" stroke="#6B4528" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </div>
+                {% endif %}
             </div>
-        </div>
+            <div class="card-body d-flex flex-column">
+                <div class="card-title mb-1">{{ item.producto.nombre }}</div>
+                <div class="precio">{{ item.producto.precio_desde|clp }}</div>
+            </div>
+        </a>
     </div>
     {% empty %}
     <div class="col-12 py-5 text-center">

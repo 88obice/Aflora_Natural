@@ -5,142 +5,214 @@
 
 {% block extra_css %}
 <style>
-    .hero {
-        background-color: #F0E8DE;
-        border-radius: 4px;
-        padding: 4.5rem 2rem;
-        text-align: center;
-        margin-bottom: 3.5rem;
+    /* La home rompe el .container de Bootstrap para secciones full-width (full-bleed) */
+    main.home {
         position: relative;
-        overflow: hidden;
+        left: 50%; right: 50%;
+        margin-left: -50vw; margin-right: -50vw;
+        width: 100vw;
+        margin-top: -1.5rem;
+        overflow-x: hidden;
     }
-    .hero::before {
-        content: ''; position: absolute; top: -60px; right: -60px;
-        width: 240px; height: 240px; border-radius: 50%;
-        background: rgba(201, 169, 154, 0.18);
+
+    /* ── Hero ── */
+    .hero {
+        position: relative; overflow: hidden;
+        background: linear-gradient(160deg, #FBF7F2 0%, #F3E9DE 55%, #EEDDD2 100%);
     }
-    .hero::after {
-        content: ''; position: absolute; bottom: -40px; left: -40px;
-        width: 180px; height: 180px; border-radius: 50%;
-        background: rgba(196, 147, 63, 0.1);
+    .hero-inner {
+        max-width: 1180px; margin: 0 auto; padding: 4.5rem 24px 5rem;
+        display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 2rem; align-items: center;
+        position: relative; z-index: 2;
     }
-    .hero h1 {
-        font-size: clamp(2rem, 5vw, 3rem);
-        color: var(--terracotta-d);
-        margin-bottom: 1rem;
-        position: relative; z-index: 1;
-    }
-    .hero p {
-        color: var(--text-muted); font-size: 1.05rem;
-        max-width: 480px; margin: 0 auto 2rem;
-        position: relative; z-index: 1;
-    }
-    .hero .btn { position: relative; z-index: 1; padding: 0.75rem 2.5rem; font-size: 0.9rem; letter-spacing: 0.1em; text-transform: uppercase; }
-    .section-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--text); margin-bottom: 0.3rem; }
-    .section-subtitle { color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.8rem; }
-    .product-card .card-body { padding: 1.1rem 1.2rem; }
-    .product-card .card-title { font-family: 'Playfair Display', serif; font-size: 1rem; margin-bottom: 0.3rem; }
-    .product-card .card-img-top { height: 210px; object-fit: cover; }
+    .hero-blob { position: absolute; border-radius: 50%; z-index: 1; }
+    .hero-blob.b1 { width: 380px; height: 380px; background: rgba(201,169,154,0.22); top: -120px; right: -80px; }
+    .hero-blob.b2 { width: 260px; height: 260px; background: rgba(196,147,63,0.13); bottom: -110px; left: 6%; }
+    .hero h1 { font-size: clamp(2.3rem, 4.5vw, 3.5rem); color: var(--terracotta-d); margin: 1rem 0 1.2rem; line-height: 1.12; }
+    .hero h1 i { font-style: italic; font-weight: 500; color: var(--terracotta); }
+    .hero .lead { font-size: 1.05rem; color: var(--text-muted); max-width: 440px; margin-bottom: 2rem; }
+    .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .hero-stats { display: flex; gap: 2.2rem; margin-top: 2.5rem; }
+    .hero-stats .n { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--terracotta-d); }
+    .hero-stats .l { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+    .hero-art { display: flex; justify-content: center; }
+    .hero-art svg { width: 100%; max-width: 360px; height: auto; filter: drop-shadow(0 20px 40px rgba(107,69,40,0.16)); }
+
+    /* ── Franja de confianza ── */
+    .trust { background: #fff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .trust-inner { max-width: 1180px; margin: 0 auto; padding: 2rem 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+    .trust .item { display: flex; align-items: center; gap: 0.9rem; }
+    .trust .ic { width: 38px; height: 38px; flex: none; color: var(--terracotta); }
+    .trust .t { font-family: 'Playfair Display', serif; font-size: 0.98rem; color: var(--terracotta-d); }
+    .trust .s { font-size: 0.76rem; color: var(--text-muted); }
+
+    /* ── Secciones ── */
+    .home-section { max-width: 1180px; margin: 0 auto; padding: 4.5rem 24px; }
+    .sec-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2.2rem; flex-wrap: wrap; gap: 1rem; }
+    .sec-head h2 { font-size: 2rem; color: var(--text); margin: 0.2rem 0 0; }
+    .sec-head .sub { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* ── Cards home ── */
+    a.product-card { text-decoration: none; color: inherit; cursor: pointer; }
+    a.product-card:hover .card-title { color: var(--terracotta); }
+    .product-card .card-body { padding: 1.1rem 1.2rem 1.3rem; }
+    .product-card .card-title { font-family: 'Playfair Display', serif; font-size: 1.05rem; margin-bottom: 0.3rem; }
+    .product-card .ph { position: relative; aspect-ratio: 1/1; overflow: hidden; border-radius: 6px 6px 0 0; }
+    .product-card .ph img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+    .product-card:hover .ph img { transform: scale(1.06); }
     .product-card .placeholder-img {
-        height: 210px; background: linear-gradient(135deg, #F0E8DE 0%, #EDD9D1 100%);
+        width: 100%; height: 100%; background: linear-gradient(135deg, #F0E8DE 0%, #EDD9D1 100%);
         display: flex; align-items: center; justify-content: center;
-        color: var(--text-muted); font-size: 2rem;
     }
-    .features { background-color: #fff; border: 1px solid var(--rose-light); border-radius: 4px; padding: 2.5rem 1.5rem; margin-top: 3.5rem; text-align: center; }
-    .feature-icon { font-size: 2rem; margin-bottom: 0.7rem; }
-    .feature-title { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--terracotta); margin-bottom: 0.4rem; }
-    .feature-text { font-size: 0.85rem; color: var(--text-muted); }
+    .product-card .cat-tag {
+        position: absolute; top: 12px; left: 12px; background: rgba(255,255,255,0.9);
+        color: var(--terracotta-d); font-size: 0.64rem; letter-spacing: 0.09em; text-transform: uppercase;
+        padding: 0.3rem 0.7rem; border-radius: 2px; font-weight: 700;
+    }
     .rating-stars { color: var(--amber); font-size: 0.85rem; }
+
+    /* ── Historia ── */
+    .story { background: linear-gradient(180deg, #fff 0%, var(--cream) 100%); }
+    .story-inner { max-width: 1180px; margin: 0 auto; padding: 4.5rem 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+    .story-art { background: var(--cream-dark); border-radius: 8px; padding: 2rem; display: flex; align-items: center; justify-content: center; aspect-ratio: 4/3; border: 1px solid var(--line); }
+    .story-art svg { width: 100%; max-width: 300px; height: auto; }
+    .story h2 { font-size: 2.1rem; margin: 0.8rem 0 1.3rem; color: var(--text); }
+    .story p { color: var(--text-muted); margin-bottom: 1.2rem; font-size: 0.98rem; line-height: 1.8; }
+
+    /* ── Newsletter band ── */
+    .news-band { background: var(--terracotta-d); color: #fff; text-align: center; }
+    .news-inner { max-width: 1180px; margin: 0 auto; padding: 4rem 24px; }
+    .news-band h2 { font-size: 1.9rem; color: #fff; margin-bottom: 0.5rem; }
+    .news-band p { color: var(--rose-light); margin-bottom: 2rem; }
+    .news-band form { display: flex; gap: 0.6rem; max-width: 460px; margin: 0 auto; justify-content: center; flex-wrap: wrap; }
+    .news-band input { flex: 1; min-width: 220px; padding: 0.85rem 1.1rem; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.1); color: #fff; border-radius: 2px; font-size: 0.9rem; }
+    .news-band input::placeholder { color: rgba(255,255,255,0.55); }
+    .news-band .btn-cream { background: var(--rose-light); color: var(--terracotta-d); border: none; padding: 0.85rem 1.8rem; border-radius: 2px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: 0.2s; }
+    .news-band .btn-cream:hover { background: #fff; }
+
+    @media (max-width: 900px) {
+        .hero-inner, .story-inner { grid-template-columns: 1fr; }
+        .hero-art { order: -1; }
+        .trust-inner { grid-template-columns: repeat(2, 1fr); }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+<main class="home">
 
-<div class="hero">
-    <h1>Bienvenida a Aflora Natural</h1>
-    <p>Velas aromáticas, homesprays y difusores artesanales hechos con ingredientes naturales. Cada aroma, una experiencia.</p>
-    <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary">Ver Catálogo</a>
-</div>
-
-<div class="d-flex justify-content-between align-items-end mb-1">
-    <div>
-        <div class="section-title">Productos destacados</div>
-        <div class="section-subtitle">Selección de aromas para tu hogar</div>
-    </div>
-    <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-outline-secondary btn-sm mb-3">Ver todos →</a>
-</div>
-
-<div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
-    {% for producto in productos %}
-    <div class="col">
-        <div class="card h-100 product-card shadow-sm">
-            {% if producto.imagen %}
-                <img src="{{ producto.imagen.url }}" class="card-img-top" alt="{{ producto.nombre }}">
-            {% else %}
-                <div class="placeholder-img">🌿</div>
-            {% endif %}
-            <div class="card-body d-flex flex-column">
-                <div class="card-title">{{ producto.nombre }}</div>
-                <div class="precio mb-2">
-                    {% if producto.variantes.exists %}desde {% endif %}{{ producto.precio_desde|clp }}
-                </div>
-                {% if producto.rating_promedio %}
-                <div class="rating-stars mb-2">
-                    {% for i in "12345" %}{% if forloop.counter <= producto.rating_promedio %}★{% else %}☆{% endif %}{% endfor %}
-                    <small class="text-muted">({{ producto.total_resenas }})</small>
-                </div>
-                {% endif %}
-                {% if producto.agotado %}
-                    <span class="badge-agotado d-inline-block mb-2">Sin stock</span>
-                {% endif %}
-                <a href="{{ producto.get_absolute_url }}" class="btn btn-outline-primary btn-sm mt-auto">Ver más</a>
+<section class="hero">
+    <div class="hero-blob b1"></div>
+    <div class="hero-blob b2"></div>
+    <div class="hero-inner">
+        <div>
+            <div class="eyebrow">Velas · Homesprays · Difusores</div>
+            <h1>Aromas que <i>transforman</i> tu hogar</h1>
+            <p class="lead">Fragancias artesanales elaboradas a mano en pequeños lotes, con ingredientes naturales. Cada aroma, una experiencia para tus espacios.</p>
+            <div class="hero-cta">
+                <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary">Ver catálogo</a>
+                <a href="{% url 'catalogo:sobre_nosotros' %}" class="btn btn-outline-primary">Nuestra historia</a>
+            </div>
+            <div class="hero-stats">
+                <div><div class="n">100%</div><div class="l">Natural</div></div>
+                <div><div class="n">Hecho</div><div class="l">a mano</div></div>
+                <div><div class="n">Chile</div><div class="l">Envío nacional</div></div>
             </div>
         </div>
+        <div class="hero-art">
+            <svg viewBox="0 0 300 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="150" cy="312" rx="120" ry="16" fill="#C9A99A" opacity=".3"/>
+                <path d="M150 40c14 14 22 26 22 40 0 15-10 24-22 24s-22-9-22-24c0-14 8-26 22-40z" fill="#F0C27B"/>
+                <path d="M150 58c7 8 11 15 11 23 0 9-5 14-11 14s-11-5-11-14c0-8 4-15 11-23z" fill="#E8974E"/>
+                <path d="M150 30v18" stroke="#6B4528" stroke-width="2.5" stroke-linecap="round"/>
+                <rect x="96" y="128" width="108" height="150" rx="10" fill="#fff" stroke="#E6D8CC" stroke-width="2"/>
+                <rect x="112" y="176" width="76" height="58" rx="4" fill="#F7EFE6" stroke="#EDD9D1" stroke-width="1.5"/>
+                <path d="M132 205c0-8 0-13 0-18M132 200c-6-1-10-5-10-11 5 0 10 4 10 11zM132 198c6-1 10-5 10-11-5 0-10 4-10 11z" stroke="#8B5E3C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <text x="150" y="252" font-family="Playfair Display" font-size="10" fill="#8B5E3C" text-anchor="middle" letter-spacing="1">AFLORA</text>
+                <path d="M60 250q20-30 44-18M240 250q-20-30-44-18" stroke="#C9A99A" stroke-width="1.5" fill="none" opacity=".7"/>
+                <circle cx="60" cy="250" r="3" fill="#C4933F"/><circle cx="240" cy="250" r="3" fill="#C4933F"/>
+            </svg>
+        </div>
     </div>
-    {% empty %}
-    <div class="col-12">
-        <p class="text-muted fst-italic">Pronto habrá productos disponibles.</p>
-    </div>
-    {% endfor %}
-</div>
+</section>
 
-<div class="features">
-    <div class="row g-4">
-        <div class="col-md-4">
-            <div class="feature-icon">🌿</div>
-            <div class="feature-title">100% Natural</div>
-            <div class="feature-text">Ingredientes naturales, sin químicos artificiales ni conservantes.</div>
-        </div>
-        <div class="col-md-4">
-            <div class="feature-icon">✂️</div>
-            <div class="feature-title">Artesanal</div>
-            <div class="feature-text">Cada producto elaborado a mano en pequeños lotes con dedicación.</div>
-        </div>
-        <div class="col-md-4">
-            <div class="feature-icon">📦</div>
-            <div class="feature-title">Envío a Chile</div>
-            <div class="feature-text">Coordinamos entrega y despacho a todo Santiago y regiones.</div>
-        </div>
-    </div>
-</div>
-
-<div class="row align-items-center mt-5 g-5">
-    <div class="col-md-6">
-        <div style="background:var(--cream-dark); border-radius:4px; height:320px; display:flex; align-items:center; justify-content:center; color:var(--rose); font-size:4rem;">
-            🌸
-        </div>
-    </div>
-    <div class="col-md-6">
-        <p style="font-size:0.78rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.8rem;">Nuestra historia</p>
-        <h2 style="font-size:1.8rem; margin-bottom:1.2rem;">Los aromas son emociones que se respiran</h2>
-        <p style="color:var(--text-muted); line-height:1.8; font-size:0.95rem; margin-bottom:1.5rem;">
-            Aflora Natural nació con una convicción simple: los aromas tienen el poder de transformar un espacio y el estado de ánimo de quienes lo habitan. Cada vela, cada homespray y cada difusor que elaboramos lleva ese propósito.
-        </p>
-        <p style="color:var(--text-muted); line-height:1.8; font-size:0.95rem; margin-bottom:2rem;">
-            Trabajamos con ingredientes naturales, en pequeños lotes artesanales, desde Santiago de Chile para todo el país.
-        </p>
-        <a href="{% url 'catalogo:sobre_nosotros' %}" class="btn btn-outline-primary">Conocer más</a>
+<div class="trust">
+    <div class="trust-inner">
+        <div class="item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22c5-3 8-7 8-12V5l-8-3-8 3v5c0 5 3 9 8 12z"/><path d="M9 12l2 2 4-4"/></svg><div><div class="t">100% Natural</div><div class="s">Sin químicos artificiales</div></div></div>
+        <div class="item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3c-3 4-5 7-5 11a5 5 0 0010 0c0-4-2-7-5-11z"/></svg><div><div class="t">Artesanal</div><div class="s">Hecho a mano en lotes</div></div></div>
+        <div class="item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg><div><div class="t">Envío a Chile</div><div class="s">Santiago y regiones</div></div></div>
+        <div class="item"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg><div><div class="t">Pago seguro</div><div class="s">Mercado Pago · transferencia</div></div></div>
     </div>
 </div>
 
+<div class="home-section">
+    <div class="sec-head">
+        <div>
+            <div class="eyebrow">Selección de la casa</div>
+            <h2>Productos destacados</h2>
+            <div class="sub">Aromas pensados para cada rincón de tu hogar</div>
+        </div>
+        <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-outline-secondary btn-sm">Ver todos →</a>
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
+        {% for producto in productos %}
+        <div class="col">
+            <a href="{{ producto.get_absolute_url }}" class="card h-100 product-card">
+                <div class="ph">
+                    {% if producto.categoria %}<span class="cat-tag">{{ producto.categoria }}</span>{% endif %}
+                    {% if producto.imagen %}
+                        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}">
+                    {% else %}
+                        <div class="placeholder-img">
+                            <svg width="80" height="100" viewBox="0 0 80 100" fill="none"><rect x="24" y="42" width="32" height="50" rx="6" fill="#fff" stroke="#C9A99A" stroke-width="1.5"/><path d="M40 42c6-8 6-17 0-23-6 6-6 15 0 23z" fill="#F0C27B"/><path d="M40 20v-5" stroke="#6B4528" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <div class="card-title">{{ producto.nombre }}</div>
+                    {% if producto.rating_promedio %}
+                    <div class="rating-stars mb-2">
+                        {% for i in "12345" %}{% if forloop.counter <= producto.rating_promedio %}★{% else %}☆{% endif %}{% endfor %}
+                        <small class="text-muted">({{ producto.total_resenas }})</small>
+                    </div>
+                    {% endif %}
+                    <div class="precio mb-2">
+                        {% if producto.variantes.exists %}desde {% endif %}{{ producto.precio_desde|clp }}
+                    </div>
+                    {% if producto.agotado %}
+                        <span class="badge-agotado d-inline-block mt-2">Sin stock</span>
+                    {% endif %}
+                </div>
+            </a>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <p class="text-muted fst-italic">Pronto habrá productos disponibles.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="story">
+    <div class="story-inner">
+        <div class="story-art">
+            <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M160 210V90" stroke="#8B5E3C" stroke-width="2.5" stroke-linecap="round"/>
+                <path d="M160 150c-30-6-50-28-52-58 30 2 50 26 52 58zM160 130c30-6 50-28 52-58-30 2-50 26-52 58zM160 175c-22-4-36-20-38-42 22 2 36 18 38 42zM160 160c22-4 36-20 38-42-22 2-36 18-38 42z" stroke="#A97A54" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="108" cy="92" r="4" fill="#C4933F"/><circle cx="212" cy="72" r="4" fill="#C4933F"/><circle cx="122" cy="133" r="3" fill="#C9A99A"/><circle cx="198" cy="118" r="3" fill="#C9A99A"/>
+                <ellipse cx="160" cy="214" rx="70" ry="8" fill="#C9A99A" opacity=".3"/>
+            </svg>
+        </div>
+        <div>
+            <div class="eyebrow">Nuestra historia</div>
+            <h2>Los aromas son emociones que se respiran</h2>
+            <p>Aflora Natural nació con una convicción simple: los aromas tienen el poder de transformar un espacio y el estado de ánimo de quienes lo habitan. Cada vela, cada homespray y cada difusor que elaboramos lleva ese propósito.</p>
+            <p>Trabajamos con ingredientes naturales, en pequeños lotes artesanales, desde Santiago de Chile para todo el país.</p>
+            <a href="{% url 'catalogo:sobre_nosotros' %}" class="btn btn-outline-primary">Conocer más</a>
+        </div>
+    </div>
+</div>
+
+</main>
 {% endblock %}

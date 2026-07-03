@@ -79,6 +79,7 @@ TEMPLATES = [
                 'carrito.context_processors.carrito_contador',
                 'aflora_natural.context_processors.analytics_ids',
                 'aflora_natural.context_processors.banco_info',
+                'aflora_natural.context_processors.categorias_nav',
             ],
         },
     },

@@ -28,3 +28,12 @@ def banco_info(request):
         'BANCO': banco,
         'transferencia_disponible': bool(banco.get('titular') and banco.get('numero_cuenta')),
     }
+
+
+def categorias_nav(request):
+    """
+    Expone las categorias en TODOS los templates para el panel deslizante
+    (offcanvas) del navbar. Import local para evitar problemas al cargar apps.
+    """
+    from catalogo.models import Categoria
+    return {'nav_categorias': Categoria.objects.all()}
