@@ -11,7 +11,8 @@ def registro(request):
         form = RegistroForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
+            # Con multiples backends configurados, login() exige indicar cual.
+            login(request, user, backend='usuarios.backends.EmailBackend')
             messages.success(request, 'Bienvenida! Tu cuenta fue creada.')
             return redirect('catalogo:inicio')
     else:

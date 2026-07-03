@@ -42,11 +42,16 @@ class CloudinaryMediaStorage(Storage):
         return response['public_id']
 
     def url(self, name):
-        """Devuelve la URL publica de Cloudinary para el archivo."""
+        """Devuelve la URL publica HTTPS de Cloudinary para el archivo.
+
+        secure=True es obligatorio: el sitio corre en https y un navegador
+        bloquea imagenes http embebidas (mixed content), dejando las fotos
+        de producto rotas. build_url(secure=True) genera https://res.cloudinary...
+        """
         if not name:
             return ''
         resource = cloudinary.CloudinaryResource(name, resource_type='image')
-        return resource.url
+        return resource.build_url(secure=True)
 
     def exists(self, name):
         """

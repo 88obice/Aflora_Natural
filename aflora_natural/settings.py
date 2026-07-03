@@ -120,6 +120,14 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# ── Autenticacion ───────────────────────────────────────────────────────────
+# EmailBackend: clientes entran con su correo.
+# ModelBackend: admin/staff siguen entrando con su username (respaldo).
+AUTHENTICATION_BACKENDS = [
+    'usuarios.backends.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 
 # ── Internacionalización ────────────────────────────────────────────────────
 LANGUAGE_CODE = 'es-cl'
@@ -164,14 +172,19 @@ MP_PUBLIC_KEY   = os.getenv('MP_PUBLIC_KEY')
 MP_ACCESS_TOKEN = os.getenv('MP_ACCESS_TOKEN')
 
 # ── Email ───────────────────────────────────────────────────────────────────
-EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST          = 'smtp.gmail.com'
-EMAIL_PORT          = 465
-EMAIL_USE_TLS       = False
-EMAIL_USE_SSL       = True
+EMAIL_BACKEND       = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+# Proveedor SMTP configurable por env. Por defecto Gmail (SSL 465).
+# Para migrar a otro proveedor (ej. Brevo: smtp-relay.brevo.com, puerto 587, TLS),
+# basta con setear estas variables en Railway — sin tocar codigo.
+EMAIL_HOST          = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT          = int(os.getenv('EMAIL_PORT', '465'))
+EMAIL_USE_TLS       = os.getenv('EMAIL_USE_TLS', 'False') == 'True'
+EMAIL_USE_SSL       = os.getenv('EMAIL_USE_SSL', 'True') == 'True'
 EMAIL_HOST_USER     = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL  = os.getenv('EMAIL_HOST_USER')
+# From configurable: algunos proveedores (Brevo) exigen un sender verificado
+# distinto del usuario SMTP. Si no se define, usa EMAIL_HOST_USER.
+DEFAULT_FROM_EMAIL  = os.getenv('DEFAULT_FROM_EMAIL') or os.getenv('EMAIL_HOST_USER')
 
 # URL base del sitio (usada para links en emails — no se puede construir con
 # request.build_absolute_uri porque los emails los manda el management command

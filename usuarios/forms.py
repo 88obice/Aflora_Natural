@@ -1,7 +1,15 @@
 from django import forms
+from django.core.validators import RegexValidator
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 from .models import PerfilUsuario, Direccion
+
+
+# Solo letras (incluye tildes y ñ) y espacios entre palabras. Sin numeros ni simbolos.
+solo_letras = RegexValidator(
+    regex=r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ '\-][A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$",
+    message='El nombre solo puede contener letras y espacios.',
+)
 
 
 class _BootstrapMixin:
@@ -13,15 +21,61 @@ class _BootstrapMixin:
 
 
 class RegistroForm(_BootstrapMixin, UserCreationForm):
-    email = forms.EmailField(required=True, label='Email')
+    """Registro tipo ecommerce: nombre + correo + contraseña.
+
+    El username no se pide al cliente; se setea igual al correo por detras.
+    """
+    nombre = forms.CharField(
+        label='Nombre',
+        max_length=60,
+        validators=[solo_letras],
+        widget=forms.TextInput(attrs={'placeholder': 'Tu nombre'}),
+    )
+    email = forms.EmailField(required=True, label='Correo electrónico')
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password1', 'password2')
+        fields = ('nombre', 'email', 'password1', 'password2')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # UserCreationForm agrega 'username' como campo obligatorio; lo quitamos
+        # porque el cliente no lo ingresa (se setea = correo en save()).
+        self.fields.pop('username', None)
+
+    def clean_nombre(self):
+        return self.cleaned_data['nombre'].strip()
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('Ya existe una cuenta con este correo.')
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        # username = correo (invisible para el cliente; login es por correo).
+        user.username = self.cleaned_data['email']
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data['nombre']
+        if commit:
+            user.save()
+        return user
 
 
 class LoginForm(_BootstrapMixin, AuthenticationForm):
-    pass
+    """Login por correo. El campo sigue llamandose 'username' internamente
+    (lo exige AuthenticationForm), pero se muestra y valida como correo.
+    El EmailBackend resuelve el correo -> usuario."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].label = 'Correo electrónico'
+        self.fields['username'].widget.attrs.update({
+            'type': 'email',
+            'placeholder': 'tucorreo@ejemplo.com',
+            'autofocus': True,
+            'autocomplete': 'email',
+        })
 
 
 class PerfilForm(_BootstrapMixin, forms.ModelForm):
