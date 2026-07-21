@@ -79,6 +79,7 @@ TEMPLATES = [
                 'carrito.context_processors.carrito_contador',
                 'aflora_natural.context_processors.analytics_ids',
                 'aflora_natural.context_processors.banco_info',
+                'aflora_natural.context_processors.contacto_info',
                 'aflora_natural.context_processors.categorias_nav',
             ],
         },
@@ -171,6 +172,10 @@ else:
 # ── Mercado Pago ────────────────────────────────────────────────────────────
 MP_PUBLIC_KEY   = os.getenv('MP_PUBLIC_KEY')
 MP_ACCESS_TOKEN = os.getenv('MP_ACCESS_TOKEN')
+# Secreto para validar la firma (x-signature) de los webhooks de MP.
+# Se obtiene en el panel de MP > Webhooks. Sin el, el webhook acepta
+# notificaciones sin verificar firma (se registra advertencia).
+MP_WEBHOOK_SECRET = os.getenv('MP_WEBHOOK_SECRET', '')
 
 # ── Email ───────────────────────────────────────────────────────────────────
 EMAIL_BACKEND       = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
@@ -200,6 +205,19 @@ _admin_name  = os.getenv('ADMIN_NAME', 'Admin Aflora').strip()
 if _admin_email:
     ADMINS   = [(_admin_name, _admin_email)]
     MANAGERS = ADMINS
+
+# ── Datos de contacto (centralizados) ───────────────────────────────────────
+# Antes el email de contacto estaba hardcodeado e INCONSISTENTE entre paginas
+# (afloranatural.temp@gmail.com vs hola@afloranatural.cl). Ahora sale de aca y
+# se inyecta en todos los templates via context processor `contacto_info`.
+# Por defecto el email publico usa el mismo que envia el correo (consistente
+# con la infra SMTP). La duenia puede sobreescribir CONTACTO_EMAIL en Railway.
+CONTACTO = {
+    'email':            (os.getenv('CONTACTO_EMAIL', '').strip() or DEFAULT_FROM_EMAIL or ''),
+    'whatsapp':         os.getenv('CONTACTO_WHATSAPP', '56989560937').strip(),
+    'whatsapp_display': os.getenv('CONTACTO_WHATSAPP_DISPLAY', '+56 9 8956 0937').strip(),
+    'instagram':        os.getenv('CONTACTO_INSTAGRAM', 'aflora_natural').strip(),
+}
 
 # ── Analytics (GA4 + Meta Pixel) ────────────────────────────────────────────
 # Si vacios, los snippets no se renderizan. Activar en produccion poniendo

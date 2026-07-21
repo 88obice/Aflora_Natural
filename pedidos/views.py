@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 import logging
 import mercadopago
@@ -73,10 +75,12 @@ Si tienes dudas: WhatsApp +56 9 8956 0937
             message=mensaje,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[pedido.email_destinatario],
-            fail_silently=True,
+            fail_silently=False,
         )
     except Exception:
-        pass
+        # No rompemos el flujo del pedido, pero SI dejamos rastro: si el cliente
+        # no recibe su confirmacion hay que poder saberlo (revisar logs/Sentry).
+        logger.exception('No se pudo enviar email de confirmacion del pedido #%s', pedido.pk)
 
 
 def _notificar_admin_nuevo_pedido(pedido):
@@ -223,40 +227,105 @@ def _crear_preferencia_mp(pedido, request):
     return pref.get('init_point') or pref.get('sandbox_init_point')
 
 
+def _notificar_admin_sin_stock(pedido):
+    """
+    ALERTA: el pago fue recibido (MP aprobado o transferencia confirmada) pero
+    al momento de confirmar ya no quedaba stock. El pedido queda cancelado y
+    hay que REEMBOLSAR al cliente manualmente. Esto no debe pasar en silencio.
+    """
+    mensaje = """ALERTA -- Pedido #{pid} PAGADO pero SIN STOCK
+
+El cliente pago, pero al confirmar el pedido ya no habia stock suficiente.
+El pedido quedo CANCELADO. Hay que REEMBOLSAR al cliente manualmente.
+
+Cliente: {nombre} ({email})
+Telefono: {tel}
+Metodo de pago: {pago}
+MP Payment ID: {mpid}
+TOTAL a reembolsar: ${tot:,}
+
+Ver en gestion: /gestion/pedidos/{pid}/
+""".format(
+        pid=pedido.pk,
+        nombre=pedido.nombre_destinatario,
+        email=pedido.email_destinatario or 'sin email',
+        tel=pedido.telefono,
+        pago=pedido.get_metodo_pago_display(),
+        mpid=pedido.mp_payment_id or 'N/A',
+        tot=int(pedido.total),
+    ).replace(',', '.')
+    try:
+        if getattr(settings, 'ADMINS', None):
+            mail_admins(
+                subject='ALERTA REEMBOLSO pedido #{} (pagado sin stock)'.format(pedido.pk),
+                message=mensaje, fail_silently=False,
+            )
+        elif settings.DEFAULT_FROM_EMAIL:
+            send_mail(
+                subject='ALERTA REEMBOLSO pedido #{} -- Aflora Natural'.format(pedido.pk),
+                message=mensaje,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.DEFAULT_FROM_EMAIL],
+                fail_silently=False,
+            )
+    except Exception:
+        # Alerta critica (hay plata de por medio): si ni el email sale, que
+        # quede en los logs con nivel ERROR para no perderlo.
+        logger.exception('FALLO al enviar alerta de reembolso del pedido #%s', pedido.pk)
+
+
 def _confirmar_pedido(pedido, mp_payment_id='', mp_status=''):
     """
     Confirma el pedido: descuenta stock, marca confirmado, manda emails.
-    Idempotente: si ya esta confirmado, no hace nada.
+    Idempotente: si ya esta confirmado (o cualquier estado != pendiente),
+    no hace nada.
+
+    Valida el stock de TODOS los items ANTES de descontar, para no dejar
+    descuentos parciales si un item falla. Si falta stock, el pedido se
+    cancela y se avisa al admin: el pago ya fue recibido y hay que reembolsar.
     """
+    from catalogo.models import Variante, Producto
+    sin_stock = False
     with transaction.atomic():
         p = Pedido.objects.select_for_update().get(pk=pedido.pk)
         if p.estado != 'pendiente':
             return p
+
+        # Paso 1: bloquear y validar stock de todos los items sin descontar aun.
+        a_descontar = []  # [(obj_bloqueado, cantidad)]
         for item in p.items.select_related('producto', 'variante').all():
             if item.variante:
-                from catalogo.models import Variante
-                v = Variante.objects.select_for_update().get(pk=item.variante.pk)
-                if item.cantidad > v.stock:
-                    p.estado = 'cancelado'
-                    p.save(update_fields=['estado'])
-                    return p
-                v.stock -= item.cantidad
-                v.save(update_fields=['stock'])
+                obj = Variante.objects.select_for_update().get(pk=item.variante.pk)
             else:
-                from catalogo.models import Producto
-                pr = Producto.objects.select_for_update().get(pk=item.producto.pk)
-                if item.cantidad > pr.stock:
-                    p.estado = 'cancelado'
-                    p.save(update_fields=['estado'])
-                    return p
-                pr.stock -= item.cantidad
-                pr.save(update_fields=['stock'])
-        p.estado = 'confirmado'
+                obj = Producto.objects.select_for_update().get(pk=item.producto.pk)
+            if item.cantidad > obj.stock:
+                sin_stock = True
+                break
+            a_descontar.append((obj, item.cantidad))
+
         if mp_payment_id:
             p.mp_payment_id = mp_payment_id
         if mp_status:
             p.mp_status = mp_status
-        p.save()
+
+        if sin_stock:
+            p.estado = 'cancelado'
+            p.save()
+        else:
+            # Paso 2: descontar todo (ya validado que alcanza).
+            for obj, cantidad in a_descontar:
+                obj.stock -= cantidad
+                obj.save(update_fields=['stock'])
+            p.estado = 'confirmado'
+            p.save()
+
+    if sin_stock:
+        logger.error(
+            'Pedido #%s: PAGO recibido pero SIN STOCK. Cancelado. Requiere reembolso manual.',
+            p.pk,
+        )
+        _notificar_admin_sin_stock(p)
+        return p
 
     _enviar_confirmacion_cliente(p)
     _notificar_admin_nuevo_pedido(p)
@@ -452,13 +521,31 @@ def track_pedido(request, token):
     return render(request, 'pedidos/track_pedido.html', {'pedido': pedido})
 
 
+def _puede_acceder_pedido(request, pedido):
+    """
+    Autorizacion por ID secuencial (misma logica que detalle_pedido):
+    - staff, o
+    - dueno logueado, o
+    - invitado que creo el pedido en ESTA sesion (session['pedidos_invitado']).
+    Evita que cualquiera enumere pks y acceda a pedidos ajenos (IDOR).
+    """
+    if request.user.is_authenticated:
+        return pedido.usuario == request.user or request.user.is_staff
+    return pedido.usuario is None and pedido.pk in request.session.get('pedidos_invitado', [])
+
+
 def pago_transferencia(request, pk):
     """
     Muestra los datos bancarios al cliente y un form opcional para subir
     el comprobante de transferencia. Accesible tras crear pedido con
-    metodo_pago='transferencia'.
+    metodo_pago='transferencia'. Protegido contra enumeracion de pks: solo
+    el dueno/invitado-de-sesion/staff pueden verlo.
     """
     pedido = get_object_or_404(Pedido, pk=pk)
+    if not _puede_acceder_pedido(request, pedido):
+        if pedido.token_publico:
+            return redirect('pedidos:track_pedido', token=pedido.token_publico)
+        return redirect('catalogo:inicio')
     if pedido.metodo_pago != 'transferencia':
         return redirect('pedidos:detalle_pedido', pk=pedido.pk)
     return render(request, 'pedidos/pago_transferencia.html', {
@@ -523,12 +610,28 @@ def subir_comprobante(request, pk):
     No cambia el estado del pedido — la duenia confirma manual desde gestion.
     """
     pedido = get_object_or_404(Pedido, pk=pk)
+    if not _puede_acceder_pedido(request, pedido):
+        if pedido.token_publico:
+            return redirect('pedidos:track_pedido', token=pedido.token_publico)
+        return redirect('catalogo:inicio')
     if pedido.metodo_pago != 'transferencia':
         messages.error(request, 'Este pedido no es por transferencia.')
         return redirect('pedidos:detalle_pedido', pk=pedido.pk)
     archivo = request.FILES.get('comprobante')
     if not archivo:
         messages.error(request, 'Adjunta una imagen del comprobante.')
+        return redirect('pedidos:pago_transferencia', pk=pedido.pk)
+    # Validar el archivo: tamanio y que sea imagen (no confiar en el content_type
+    # del cliente; se valida ademas abriendo con Pillow).
+    if archivo.size > 5 * 1024 * 1024:
+        messages.error(request, 'La imagen es muy grande (maximo 5 MB).')
+        return redirect('pedidos:pago_transferencia', pk=pedido.pk)
+    try:
+        from PIL import Image
+        Image.open(archivo).verify()
+        archivo.seek(0)
+    except Exception:
+        messages.error(request, 'El archivo no es una imagen valida.')
         return redirect('pedidos:pago_transferencia', pk=pedido.pk)
     pedido.comprobante_transferencia = archivo
     pedido.save(update_fields=['comprobante_transferencia', 'actualizado'])
@@ -538,37 +641,60 @@ def subir_comprobante(request, pk):
 
 
 # --- Callbacks de Mercado Pago (back_urls) -------------------------------
+#
+# IMPORTANTE: las back_urls son URLs que el NAVEGADOR del cliente visita, con
+# parametros que el cliente controla. NUNCA confirmamos ni cancelamos un pedido
+# creyendole a esos parametros. La fuente de verdad es el webhook (firmado) o
+# una consulta directa a la API de MP. Aca solo mostramos feedback; si podemos
+# verificar el pago real contra MP, adelantamos la confirmacion para dar mejor UX.
+
+def _obtener_pago_mp(payment_id):
+    """Consulta la API de MP y devuelve el dict del pago, o None si falla."""
+    if not payment_id:
+        return None
+    try:
+        sdk = mercadopago.SDK(settings.MP_ACCESS_TOKEN)
+        return sdk.payment().get(payment_id).get('response', {})
+    except Exception:
+        logger.exception('Error consultando pago MP %s', payment_id)
+        return None
+
 
 def pago_exitoso(request):
-    pedido_id = request.GET.get('external_reference')
+    """
+    Back URL tras un pago que MP considero aprobado. Verificamos contra la API
+    de MP antes de confirmar: consultamos el pago real y comprobamos que este
+    'approved' y que su external_reference apunte a este pedido. Si no podemos
+    verificar, mostramos un mensaje neutro y dejamos que el webhook confirme.
+    """
     payment_id = request.GET.get('payment_id', '') or request.GET.get('collection_id', '')
-    status = request.GET.get('status', '') or request.GET.get('collection_status', '')
-    if pedido_id:
+    pedido = None
+    pago = _obtener_pago_mp(payment_id)
+    if pago and pago.get('status') == 'approved':
         try:
-            pedido = Pedido.objects.get(pk=pedido_id)
-            _confirmar_pedido(pedido, mp_payment_id=payment_id, mp_status=status)
-            if request.user.is_authenticated and pedido.usuario == request.user:
-                messages.success(request, 'Pago recibido. Tu pedido esta confirmado.')
-                return redirect('pedidos:detalle_pedido', pk=pedido.pk)
-        except Pedido.DoesNotExist:
-            pass
+            pedido = Pedido.objects.get(pk=pago.get('external_reference'))
+            _confirmar_pedido(pedido, mp_payment_id=str(payment_id), mp_status='approved')
+        except (Pedido.DoesNotExist, ValueError, TypeError):
+            pedido = None
+
+    if pedido and request.user.is_authenticated and pedido.usuario == request.user:
+        messages.success(request, 'Pago recibido. Tu pedido esta confirmado.')
+        return redirect('pedidos:detalle_pedido', pk=pedido.pk)
+
     return render(request, 'pedidos/pago_resultado.html', {
-        'titulo': 'Pago exitoso',
-        'mensaje': 'Tu pedido fue confirmado. Te contactaremos pronto.',
+        'titulo': 'Pago recibido',
+        'mensaje': 'Estamos confirmando tu pago. Te enviaremos un email en cuanto quede listo.',
         'tipo': 'exito',
     })
 
 
 def pago_fallido(request):
-    pedido_id = request.GET.get('external_reference')
-    if pedido_id:
-        try:
-            pedido = Pedido.objects.get(pk=pedido_id)
-            if pedido.estado == 'pendiente':
-                pedido.estado = 'cancelado'
-                pedido.save(update_fields=['estado'])
-        except Pedido.DoesNotExist:
-            pass
+    """
+    Back URL de pago fallido/cancelado. NO cancelamos el pedido aca (seria
+    cancelable por cualquiera con el ID en la URL). El webhook cancela cuando
+    MP confirma 'rejected'/'cancelled'. El pedido pendiente tambien se puede
+    reintentar o lo cancela el propio cliente/staff.
+    """
     return render(request, 'pedidos/pago_resultado.html', {
         'titulo': 'Pago no completado',
         'mensaje': 'El pago no pudo procesarse. Puedes intentarlo de nuevo o contactarnos por WhatsApp.',
@@ -586,13 +712,52 @@ def pago_pendiente(request):
 
 # --- Webhook de Mercado Pago ---------------------------------------------
 
+def _validar_firma_webhook(request):
+    """
+    Valida el header x-signature de Mercado Pago (HMAC-SHA256).
+    Doc: https://www.mercadopago.cl/developers/es/docs/your-integrations/notifications/webhooks
+
+    El manifest es 'id:<data.id>;request-id:<x-request-id>;ts:<ts>;'.
+    Si MP_WEBHOOK_SECRET no esta configurado, no validamos (retorna True) para
+    no romper antes de que se configure el secreto en produccion, pero se
+    registra una advertencia. Con el secreto puesto, la firma es obligatoria.
+    """
+    secret = getattr(settings, 'MP_WEBHOOK_SECRET', '')
+    if not secret:
+        logger.warning('Webhook MP sin MP_WEBHOOK_SECRET: firma NO validada. Configuralo en produccion.')
+        return True
+
+    firma = request.headers.get('x-signature', '')
+    request_id = request.headers.get('x-request-id', '')
+    partes = dict(
+        p.strip().split('=', 1) for p in firma.split(',') if '=' in p
+    )
+    ts = partes.get('ts', '')
+    v1 = partes.get('v1', '')
+    if not ts or not v1:
+        return False
+
+    data_id = request.GET.get('data.id', '') or request.GET.get('id', '')
+    # MP recomienda usar el data.id en minusculas cuando es alfanumerico.
+    if data_id:
+        data_id = data_id.lower()
+    manifest = 'id:{};request-id:{};ts:{};'.format(data_id, request_id, ts)
+    esperado = hmac.new(secret.encode(), manifest.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(esperado, v1)
+
+
 @csrf_exempt
 @require_POST
 def webhook_mp(request):
     """
     Webhook de notificaciones de Mercado Pago.
-    MP envia POST con info del pago. Nosotros consultamos su API para verificar.
+    MP envia POST con info del pago. Validamos la firma y luego consultamos su
+    API para verificar el estado real del pago (unica fuente de verdad).
     """
+    if not _validar_firma_webhook(request):
+        logger.warning('Webhook MP: firma invalida. Rechazado.')
+        return HttpResponse(status=401)
+
     try:
         data = json.loads(request.body.decode('utf-8') or '{}')
     except (ValueError, UnicodeDecodeError):

@@ -32,6 +32,7 @@ def ver_carrito(request):
     })
 
 
+@require_POST
 def agregar_al_carrito(request, producto_id):
     es_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     producto = get_object_or_404(Producto, pk=producto_id, disponible=True)

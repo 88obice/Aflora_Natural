@@ -1,17 +1,22 @@
-from .models import Carrito
+from django.db.models import Sum
+from .models import ItemCarrito
 
 
 def carrito_contador(request):
-    """Contador del carrito para mostrar en navbar (usado por todas las paginas)."""
+    """
+    Contador del carrito para el navbar. Corre en CADA request del sitio, asi
+    que resuelve el total con un unico aggregate (SUM en la BD) en vez de traer
+    e iterar todos los items en Python (evita N+1 en cada pagina).
+    """
     try:
         if request.user.is_authenticated:
-            carrito = Carrito.objects.filter(usuario=request.user).first()
+            filtro = {'carrito__usuario': request.user}
         else:
             sk = request.session.session_key
-            carrito = Carrito.objects.filter(sesion_key=sk).first() if sk else None
-        if carrito:
-            total = sum(it.cantidad for it in carrito.items.all())
-            return {'carrito_count': total}
+            if not sk:
+                return {'carrito_count': 0}
+            filtro = {'carrito__sesion_key': sk}
+        total = ItemCarrito.objects.filter(**filtro).aggregate(n=Sum('cantidad'))['n']
+        return {'carrito_count': total or 0}
     except Exception:
-        pass
-    return {'carrito_count': 0}
+        return {'carrito_count': 0}

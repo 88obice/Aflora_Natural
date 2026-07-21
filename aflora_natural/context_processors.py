@@ -30,6 +30,15 @@ def banco_info(request):
     }
 
 
+def contacto_info(request):
+    """
+    Expone los datos de contacto centralizados (email, WhatsApp, Instagram)
+    en TODOS los templates. Evita el email hardcodeado e inconsistente que
+    habia antes entre paginas.
+    """
+    return {'CONTACTO': getattr(settings, 'CONTACTO', {})}
+
+
 def categorias_nav(request):
     """
     Expone las categorias en TODOS los templates para el panel deslizante

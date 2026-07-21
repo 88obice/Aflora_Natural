@@ -9,7 +9,7 @@ Foco: lo que si falla pierdes plata o quedan pedidos en limbo.
 from decimal import Decimal
 from unittest.mock import patch, MagicMock
 
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, override_settings
 from django.contrib.auth.models import User
 
 from catalogo.models import Categoria, Producto, Variante
@@ -243,6 +243,101 @@ class WebhookMpTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
 
+    @override_settings(MP_WEBHOOK_SECRET='clave-secreta-mp')
+    def test_webhook_con_secreto_rechaza_firma_invalida(self):
+        """Con MP_WEBHOOK_SECRET configurado, firma invalida -> 401 y no confirma."""
+        resp = self.client.post(
+            '/pedidos/webhook/mp/?data.id=999&type=payment',
+            data='{"type": "payment", "data": {"id": "999"}}',
+            content_type='application/json',
+            HTTP_X_SIGNATURE='ts=123,v1=firmafalsa',
+            HTTP_X_REQUEST_ID='req-1',
+        )
+        self.assertEqual(resp.status_code, 401)
+        self.pedido.refresh_from_db()
+        self.assertEqual(self.pedido.estado, 'pendiente')
+
+    @override_settings(MP_WEBHOOK_SECRET='clave-secreta-mp')
+    @patch('pedidos.views.mercadopago.SDK')
+    def test_webhook_con_secreto_acepta_firma_valida(self, mock_sdk):
+        """Firma HMAC correcta -> procesa el webhook y confirma."""
+        import hashlib
+        import hmac
+        mock_sdk.return_value.payment.return_value.get.return_value = {
+            'response': {'status': 'approved', 'external_reference': str(self.pedido.pk)}
+        }
+        ts, req_id, data_id = '123', 'req-1', '999'
+        manifest = 'id:{};request-id:{};ts:{};'.format(data_id, req_id, ts)
+        v1 = hmac.new(b'clave-secreta-mp', manifest.encode(), hashlib.sha256).hexdigest()
+        resp = self.client.post(
+            '/pedidos/webhook/mp/?data.id=999&type=payment',
+            data='{"type": "payment", "data": {"id": "999"}}',
+            content_type='application/json',
+            HTTP_X_SIGNATURE='ts={},v1={}'.format(ts, v1),
+            HTTP_X_REQUEST_ID=req_id,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.pedido.refresh_from_db()
+        self.assertEqual(self.pedido.estado, 'confirmado')
+
+
+# =========================================================================
+# 3b. Back URLs de MP: NO deben confirmar/cancelar por parametros de la URL
+# =========================================================================
+
+class BackUrlsSegurasTests(TestCase):
+    """
+    Las back_urls las visita el navegador del cliente con parametros que el
+    controla. No deben cambiar el estado del pedido sin verificar contra MP.
+    """
+
+    def setUp(self):
+        self.cat = Categoria.objects.create(nombre='Velas')
+        self.producto = Producto.objects.create(
+            categoria=self.cat, nombre='Vela',
+            descripcion='Test', precio=Decimal('5000'), stock=10,
+        )
+        self.pedido = Pedido.objects.create(
+            telefono='+56912345678', metodo_envio='retiro_local',
+            subtotal=10000, costo_envio=0, total=10000,
+        )
+        ItemPedido.objects.create(
+            pedido=self.pedido, producto=self.producto,
+            cantidad=2, precio_unitario=Decimal('5000'),
+            nombre_snapshot=self.producto.nombre,
+        )
+
+    def test_pago_exitoso_no_confirma_por_external_reference_falso(self):
+        """Visitar /pago/exitoso/ con external_reference/status en la URL NO confirma."""
+        resp = self.client.get(
+            '/pedidos/pago/exitoso/?external_reference={}&status=approved'.format(self.pedido.pk)
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.pedido.refresh_from_db()
+        self.producto.refresh_from_db()
+        self.assertEqual(self.pedido.estado, 'pendiente')
+        self.assertEqual(self.producto.stock, 10)  # stock intacto
+
+    @patch('pedidos.views.mercadopago.SDK')
+    def test_pago_exitoso_confirma_solo_si_mp_dice_approved(self, mock_sdk):
+        """Si el pago verificado en MP esta approved y coincide, se confirma."""
+        mock_sdk.return_value.payment.return_value.get.return_value = {
+            'response': {'status': 'approved', 'external_reference': str(self.pedido.pk)}
+        }
+        resp = self.client.get('/pedidos/pago/exitoso/?payment_id=555')
+        self.assertEqual(resp.status_code, 200)
+        self.pedido.refresh_from_db()
+        self.assertEqual(self.pedido.estado, 'confirmado')
+
+    def test_pago_fallido_no_cancela_pedido(self):
+        """/pago/fallido/ con external_reference NO debe cancelar el pedido."""
+        resp = self.client.get(
+            '/pedidos/pago/fallido/?external_reference={}'.format(self.pedido.pk)
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.pedido.refresh_from_db()
+        self.assertEqual(self.pedido.estado, 'pendiente')
+
 
 # =========================================================================
 # 4. Transferencia bancaria
@@ -343,15 +438,15 @@ class TransferenciaBancariaTests(TestCase):
         self.assertEqual(pedido.estado, 'confirmado')  # no se cancela
 
     def test_subir_comprobante_guarda_archivo(self):
+        import io
+        from PIL import Image
         from django.core.files.uploadedfile import SimpleUploadedFile
         pedido = self._crear_pedido_transferencia()
-        # 1x1 PNG transparente
-        png_bytes = (
-            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
-            b'\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xfc\xcf'
-            b'\xc0P\x0f\x00\x05\x01\x01\xff\xab\xcd\xeeo\x00\x00\x00\x00IEND\xaeB`\x82'
-        )
-        comprobante = SimpleUploadedFile('compr.png', png_bytes, content_type='image/png')
+        # PNG valido generado con PIL (uploads reales tienen CRC correcto; la
+        # vista valida la imagen con Pillow y rechaza archivos corruptos/falsos).
+        buf = io.BytesIO()
+        Image.new('RGB', (2, 2), (200, 100, 50)).save(buf, format='PNG')
+        comprobante = SimpleUploadedFile('compr.png', buf.getvalue(), content_type='image/png')
         self.client.force_login(self.user)
         resp = self.client.post(
             '/pedidos/{}/comprobante/'.format(pedido.pk),
@@ -444,3 +539,36 @@ class TrackingPublicoTokenTests(TestCase):
         self.client.post('/pedidos/track/{}/cancelar/'.format(p.token_publico))
         p.refresh_from_db()
         self.assertEqual(p.estado, 'confirmado')
+
+
+# =========================================================================
+# 6. Endpoints por pk protegidos contra enumeracion (IDOR)
+# =========================================================================
+
+class EndpointsPorPkAuthTests(TestCase):
+    """pago_transferencia y subir_comprobante no deben exponerse por pk."""
+
+    def setUp(self):
+        self.cat = Categoria.objects.create(nombre='Velas')
+        self.producto = Producto.objects.create(
+            categoria=self.cat, nombre='Vela', descripcion='x',
+            precio=Decimal('5000'), stock=10)
+        self.pedido = Pedido.objects.create(
+            usuario=None, nombre_cliente='Juan', email_cliente='j@t.com',
+            telefono='+56912345678', metodo_envio='retiro_local', metodo_pago='transferencia',
+            subtotal=Decimal('5000'), costo_envio=Decimal('0'), total=Decimal('5000'))
+
+    def test_extrano_no_ve_datos_transferencia_por_pk(self):
+        resp = self.client.get('/pedidos/{}/transferencia/'.format(self.pedido.pk))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('/track/', resp.url)
+
+    def test_extrano_no_puede_subir_comprobante_por_pk(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        img = SimpleUploadedFile('c.png', b'noimg', content_type='image/png')
+        resp = self.client.post('/pedidos/{}/comprobante/'.format(self.pedido.pk),
+                                data={'comprobante': img})
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('/track/', resp.url)
+        self.pedido.refresh_from_db()
+        self.assertFalse(self.pedido.comprobante_transferencia)
