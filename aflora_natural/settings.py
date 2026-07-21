@@ -192,6 +192,18 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 # distinto del usuario SMTP. Si no se define, usa EMAIL_HOST_USER.
 DEFAULT_FROM_EMAIL  = os.getenv('DEFAULT_FROM_EMAIL') or os.getenv('EMAIL_HOST_USER')
 
+# ── Envio por API HTTP (Brevo via Anymail) ──────────────────────────────────
+# Railway bloquea SMTP saliente en los planes bajos, asi que en produccion se
+# envia por la API HTTP de Brevo (puerto 443, no bloqueado). Si BREVO_API_KEY
+# esta seteada, se usa ese backend y se ignora la config SMTP de arriba. Si no,
+# queda el EMAIL_BACKEND por defecto (util para consola/tests en local).
+# IMPORTANTE: DEFAULT_FROM_EMAIL debe ser un remitente VERIFICADO en Brevo.
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '').strip()
+if BREVO_API_KEY:
+    INSTALLED_APPS += ['anymail']
+    EMAIL_BACKEND = 'anymail.backends.brevo.EmailBackend'
+    ANYMAIL = {'BREVO_API_KEY': BREVO_API_KEY}
+
 # URL base del sitio (usada para links en emails — no se puede construir con
 # request.build_absolute_uri porque los emails los manda el management command
 # o el signal sin request disponible). En produccion: https://tudominio.cl

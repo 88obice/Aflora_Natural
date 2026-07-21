@@ -11,3 +11,4 @@ dj-database-url==2.3.0
 cloudinary>=1.36.0
 requests>=2.31.0
 sentry-sdk[django]>=2.0
+django-anymail>=10.0   # envio de email por API HTTP (Brevo) — Railway bloquea SMTP
