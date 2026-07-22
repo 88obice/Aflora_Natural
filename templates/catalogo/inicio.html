@@ -37,7 +37,20 @@
     .hero-stats .l { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
     .hero-art { display: flex; justify-content: center; }
     .hero-art svg { width: 100%; max-width: 360px; height: auto; filter: drop-shadow(0 20px 40px rgba(107,69,40,0.16)); }
-    .hero-art .hero-photo { width: 100%; max-width: 420px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 14px; box-shadow: 0 20px 40px rgba(107,69,40,0.18); }
+    /* Hero full-bleed: foto de fondo + velo oscuro (se activa con HERO_IMAGEN_URL) */
+    .hero--foto { min-height: 540px; display: flex; align-items: center; background-color: #2d1d12; background-size: cover; background-position: center; }
+    .hero--foto .hero-overlay { position: absolute; inset: 0; z-index: 1; background: linear-gradient(100deg, rgba(45,29,18,0.85) 0%, rgba(45,29,18,0.5) 40%, rgba(45,29,18,0.1) 74%, rgba(45,29,18,0) 100%); }
+    .hero--foto .hero-blob { display: none; }
+    .hero--foto .hero-inner { width: 100%; grid-template-columns: 1fr; }
+    .hero--foto .hero-copy { max-width: 560px; }
+    .hero--foto .eyebrow { color: #E8C9A0; }
+    .hero--foto h1 { color: #fff; }
+    .hero--foto h1 i { color: #F0C27B; }
+    .hero--foto .lead { color: rgba(255,255,255,0.92); }
+    .hero--foto .hero-stats .n { color: #fff; }
+    .hero--foto .hero-stats .l { color: rgba(255,255,255,0.82); }
+    .hero--foto .btn-outline-primary { color: #fff; border-color: rgba(255,255,255,0.65); }
+    .hero--foto .btn-outline-primary:hover { background: rgba(255,255,255,0.15); border-color: #fff; }
 
     /* ── Franja de confianza ── */
     .trust { background: #fff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -95,6 +108,10 @@
         .hero-inner, .story-inner { grid-template-columns: 1fr; }
         .hero-art { order: -1; }
         .trust-inner { grid-template-columns: repeat(2, 1fr); }
+        /* En movil la foto queda de fondo completo: velo mas parejo y de abajo
+           hacia arriba para que el texto se lea sobre cualquier parte de la foto. */
+        .hero--foto { min-height: 460px; }
+        .hero--foto .hero-overlay { background: linear-gradient(180deg, rgba(45,29,18,0.55) 0%, rgba(45,29,18,0.8) 100%); }
     }
 </style>
 {% endblock %}
@@ -102,11 +119,12 @@
 {% block content %}
 <main class="home">
 
-<section class="hero">
+<section class="hero{% if hero_imagen %} hero--foto{% endif %}"{% if hero_imagen %} style="background-image:url('{{ hero_imagen }}')"{% endif %}>
+    {% if hero_imagen %}<div class="hero-overlay"></div>{% endif %}
     <div class="hero-blob b1"></div>
     <div class="hero-blob b2"></div>
     <div class="hero-inner">
-        <div>
+        <div class="hero-copy">
             <div class="eyebrow">Velas · Homesprays · Difusores</div>
             <h1>Aromas que <i>transforman</i> tu hogar</h1>
             <p class="lead">Fragancias artesanales elaboradas a mano en pequeños lotes, con ingredientes naturales. Cada aroma, una experiencia para tus espacios.</p>
@@ -120,10 +138,8 @@
                 <div><div class="n">Chile</div><div class="l">Envío nacional</div></div>
             </div>
         </div>
+        {% if not hero_imagen %}
         <div class="hero-art">
-            {% if hero_imagen %}
-            <img src="{{ hero_imagen }}" alt="Aflora Natural — velas artesanales" class="hero-photo">
-            {% else %}
             <svg viewBox="0 0 300 340" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="150" cy="312" rx="120" ry="16" fill="#C9A99A" opacity=".3"/>
                 <path d="M150 40c14 14 22 26 22 40 0 15-10 24-22 24s-22-9-22-24c0-14 8-26 22-40z" fill="#F0C27B"/>
@@ -136,8 +152,8 @@
                 <path d="M60 250q20-30 44-18M240 250q-20-30-44-18" stroke="#C9A99A" stroke-width="1.5" fill="none" opacity=".7"/>
                 <circle cx="60" cy="250" r="3" fill="#C4933F"/><circle cx="240" cy="250" r="3" fill="#C4933F"/>
             </svg>
-            {% endif %}
         </div>
+        {% endif %}
     </div>
 </section>
 
