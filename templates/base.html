@@ -106,7 +106,11 @@
         .navbar {
             background-color: var(--cream-dark) !important;
             padding: 1rem 0;
+            position: sticky; top: 0; z-index: 1030;
+            transition: transform 0.35s ease;
         }
+        /* Se esconde al bajar; el JS le saca la clase al subir un poco */
+        .navbar.nav-hidden { transform: translateY(-100%); }
         .navbar-brand {
             font-family: 'Playfair Display', serif;
             font-size: 1.4rem;
@@ -539,6 +543,28 @@
             document.getElementById('cookieBanner').style.display = 'block';
         });
     }
+    </script>
+
+    <script>
+    // Navbar que se esconde al bajar y reaparece al subir un poco.
+    (function () {
+        const nav = document.querySelector('.navbar');
+        if (!nav) return;
+        let ultimoScroll = window.scrollY;
+        const UMBRAL = 6;   // px minimos de movimiento para reaccionar (evita parpadeo)
+        window.addEventListener('scroll', function () {
+            const actual = window.scrollY;
+            const menuAbierto = document.querySelector('#navMenu')?.classList.contains('show');
+            const delta = actual - ultimoScroll;
+            if (Math.abs(delta) < UMBRAL || menuAbierto) return;
+            if (delta > 0 && actual > nav.offsetHeight) {
+                nav.classList.add('nav-hidden');      // bajando -> ocultar
+            } else {
+                nav.classList.remove('nav-hidden');   // subiendo -> mostrar
+            }
+            ultimoScroll = actual;
+        }, { passive: true });
+    })();
     </script>
 
     {% block extra_js %}{% endblock %}
