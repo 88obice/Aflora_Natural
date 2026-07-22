@@ -1,46 +1,125 @@
 {% extends 'base.html' %}
 {% block title %}Sobre nosotros — Aflora Natural{% endblock %}
-{% block meta_description %}Aflora Natural: velas, homesprays y difusores artesanales hechos a mano en Santiago de Chile, con ingredientes naturales.{% endblock %}
+{% block meta_description %}El oficio detrás de Aflora Natural: velas, homesprays y difusores hechos a mano en lotes pequeños, con ingredientes naturales, desde Santiago de Chile.{% endblock %}
+
+{% block extra_css %}
+<style>
+    .about-art {
+        background: linear-gradient(160deg, #FBF7F2 0%, #F0E8DE 100%);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        aspect-ratio: 4/5;
+        display: flex; align-items: center; justify-content: center;
+        padding: 2rem;
+    }
+    .about-art svg { width: 100%; max-width: 260px; height: auto; }
+    .about-eyebrow {
+        font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase;
+        color: var(--terracotta-l); font-weight: 700; margin-bottom: 0.7rem;
+    }
+    .about-lead h1 { font-size: clamp(1.9rem, 3.5vw, 2.4rem); color: var(--terracotta-d); margin-bottom: 1.3rem; }
+    .about-lead p { color: var(--text-muted); line-height: 1.85; font-size: 1rem; margin-bottom: 1.1rem; }
+
+    .value-card { text-align: center; padding: 0.5rem; }
+    .value-ic {
+        width: 58px; height: 58px; margin: 0 auto 1rem;
+        border-radius: 50%; background: var(--cream-dark);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--terracotta);
+    }
+    .value-ic svg { width: 28px; height: 28px; }
+    .value-card h5 { font-family: 'Playfair Display', serif; color: var(--terracotta-d); font-size: 1.05rem; margin-bottom: 0.4rem; }
+    .value-card p { color: var(--text-muted); font-size: 0.86rem; line-height: 1.6; margin-bottom: 0; }
+
+    .about-values { border-top: 1px solid var(--line); margin-top: 3.5rem; padding-top: 3rem; }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="row align-items-center g-5 mt-3">
     <div class="col-md-5">
-        <div style="background:var(--cream-dark); border-radius:4px; height:380px; display:flex; align-items:center; justify-content:center; color:var(--rose); font-size:5rem;">🌸</div>
+        <div class="about-art">
+            {# Composición botánica + vela, distinta a la ilustración de la home #}
+            <svg viewBox="0 0 240 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="120" cy="278" rx="86" ry="12" fill="#C9A99A" opacity=".28"/>
+                <!-- tallos botánicos -->
+                <path d="M120 250c0-40 0-70 0-104" stroke="#8B5E3C" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M120 176c-24-5-40-24-42-50 24 2 40 22 42 50z" stroke="#A97A54" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+                <path d="M120 158c24-5 40-24 42-50-24 2-40 22-42 50z" stroke="#A97A54" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+                <circle cx="78" cy="126" r="4" fill="#C4933F"/>
+                <circle cx="162" cy="108" r="4" fill="#C4933F"/>
+                <!-- vela -->
+                <rect x="86" y="176" width="68" height="86" rx="9" fill="#fff" stroke="#E6D8CC" stroke-width="2"/>
+                <rect x="100" y="206" width="40" height="34" rx="4" fill="#F7EFE6" stroke="#EDD9D1" stroke-width="1.4"/>
+                <text x="120" y="228" font-family="Playfair Display" font-size="9" fill="#8B5E3C" text-anchor="middle" letter-spacing="1">AFLORA</text>
+                <!-- llama -->
+                <path d="M120 176c6-7 8-12 8-17 0-6-4-10-8-14-4 4-8 8-8 14 0 5 2 10 8 17z" fill="#F0C27B"/>
+                <path d="M120 172c3-4 4-7 4-10 0-3-2-6-4-8-2 2-4 5-4 8 0 3 1 6 4 10z" fill="#E8974E"/>
+                <path d="M120 145v-14" stroke="#6B4528" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+        </div>
     </div>
-    <div class="col-md-7">
-        <p style="font-size:0.78rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.6rem;">Nuestra historia</p>
-        <h1 style="font-size:2.2rem; margin-bottom:1.3rem;">Los aromas son emociones que se respiran</h1>
-        <p style="color:var(--text-muted); line-height:1.8; font-size:1rem;">
-            Aflora Natural nació con una convicción simple: los aromas tienen el poder de transformar un espacio
-            y el estado de ánimo de quienes lo habitan. Cada vela, cada homespray y cada difusor que elaboramos
-            lleva ese propósito.
+    <div class="col-md-7 about-lead">
+        <div class="about-eyebrow">Quiénes somos</div>
+        <h1>El oficio detrás de cada aroma</h1>
+        <p>
+            En Aflora Natural no fabricamos en serie. Cada vela, homespray y difusor se prepara
+            en lotes pequeños, cuidando la mezcla, los tiempos de curado y el acabado de cada pieza.
+            Preferimos hacer menos y hacerlo bien.
         </p>
-        <p style="color:var(--text-muted); line-height:1.8; font-size:1rem;">
-            Trabajamos con ingredientes naturales, en pequeños lotes artesanales, desde Santiago de Chile.
-            No usamos químicos artificiales ni conservantes innecesarios; preferimos hacerlo bien antes que hacerlo rápido.
+        <p>
+            Elegimos ceras vegetales, aceites esenciales y fragancias de calidad, sin químicos
+            artificiales ni conservantes innecesarios. Buscamos aromas que acompañen tu día sin
+            saturar el ambiente: presentes, pero nunca invasivos.
+        </p>
+        <p>
+            Somos un proyecto chileno. Elaboramos todo en Santiago y despachamos a lo largo del país,
+            para que cualquier rincón pueda transformarse con un buen aroma.
         </p>
     </div>
 </div>
 
-<div class="row g-4 mt-5 text-center">
+<div class="row g-4 about-values">
     <div class="col-md-4">
-        <div style="font-size:2rem; margin-bottom:0.5rem;">🌿</div>
-        <h5 style="font-family:'Playfair Display',serif; color:var(--terracotta);">Naturales</h5>
-        <p class="text-muted small">Ceras vegetales, aceites esenciales y fragancias premium.</p>
+        <div class="value-card">
+            <div class="value-ic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 21c0-9 6-15 15-15 0 9-6 15-15 15z"/>
+                    <path d="M5 21c4.5-5 9-7.5 14-8.5"/>
+                </svg>
+            </div>
+            <h5>Naturales</h5>
+            <p>Ceras vegetales, aceites esenciales y fragancias premium. Sin químicos artificiales.</p>
+        </div>
     </div>
     <div class="col-md-4">
-        <div style="font-size:2rem; margin-bottom:0.5rem;">✂️</div>
-        <h5 style="font-family:'Playfair Display',serif; color:var(--terracotta);">Hechos a mano</h5>
-        <p class="text-muted small">Cada pieza pasa por nuestras manos. Nada de producción en masa.</p>
+        <div class="value-card">
+            <div class="value-ic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="8" y="10" width="8" height="11" rx="2"/>
+                    <path d="M12 4c1.8 1.8 2.6 3 2.6 4.2A2.6 2.6 0 0 1 12 10a2.6 2.6 0 0 1-2.6-1.8C9.4 7 10.2 5.8 12 4z"/>
+                    <path d="M12 10V8"/>
+                </svg>
+            </div>
+            <h5>Hechos a mano</h5>
+            <p>Lotes pequeños, colados y terminados a mano. Nada de producción en masa.</p>
+        </div>
     </div>
     <div class="col-md-4">
-        <div style="font-size:2rem; margin-bottom:0.5rem;">🇨🇱</div>
-        <h5 style="font-family:'Playfair Display',serif; color:var(--terracotta);">Hechos en Chile</h5>
-        <p class="text-muted small">Desde Santiago, despachamos a todo el país.</p>
+        <div class="value-card">
+            <div class="value-ic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 21c4.5-5.5 7-9 7-12a7 7 0 0 0-14 0c0 3 2.5 6.5 7 12z"/>
+                    <circle cx="12" cy="9" r="2.5"/>
+                </svg>
+            </div>
+            <h5>Hechos en Chile</h5>
+            <p>Elaborados en Santiago, con despacho a todo el país.</p>
+        </div>
     </div>
 </div>
 
-<div class="text-center mt-5">
+<div class="text-center mt-5 pt-3">
     <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary">Ver catálogo</a>
     <a href="{% url 'catalogo:pagina_contacto' %}" class="btn btn-outline-primary ms-2">Contáctanos</a>
 </div>

@@ -69,8 +69,9 @@ def lista_productos(request):
             Q(nombre__icontains=q) |
             Q(descripcion__icontains=q) |
             Q(descripcion_corta__icontains=q) |
-            Q(sku__icontains=q)
-        )
+            Q(sku__icontains=q) |
+            Q(categoria__nombre__icontains=q)
+        ).distinct()
 
     # Filtro de precio
     precio_min = request.GET.get('precio_min', '').strip()

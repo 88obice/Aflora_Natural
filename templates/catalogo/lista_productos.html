@@ -18,9 +18,22 @@
     .filter-bar .chip:hover { border-color: var(--rose); color: var(--terracotta-d); }
     .filter-bar .chip.active { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
 
-    .toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.8rem; }
-    .toolbar input.form-control, .toolbar select.form-select { font-size: 0.85rem; border-radius: 2px; border-color: var(--line); }
-    .toolbar input.form-control:focus, .toolbar select.form-select:focus { border-color: var(--terracotta); box-shadow: none; }
+    /* ── Toolbar minimal ── */
+    .cat-tools { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.6rem; }
+    .cat-search { flex: 1 1 260px; display: flex; align-items: center; gap: 0.55rem; border-bottom: 1px solid var(--rose); padding: 0.4rem 0.15rem; color: var(--terracotta-d); transition: border-color 0.2s; }
+    .cat-search:focus-within { border-bottom-color: var(--terracotta); }
+    .cat-search input { border: none; background: transparent; outline: none; width: 100%; font-size: 0.9rem; color: var(--text); }
+    .cat-search input::placeholder { color: var(--text-muted); }
+    .cat-tools-right { display: flex; align-items: center; gap: 0.6rem; margin-left: auto; }
+    .btn-filtros { display: inline-flex; align-items: center; gap: 0.45rem; border: 1px solid var(--line); background: #fff; color: var(--text); border-radius: 2px; padding: 0.5rem 1rem; font-size: 0.8rem; letter-spacing: 0.03em; cursor: pointer; transition: 0.18s; }
+    .btn-filtros:hover { border-color: var(--rose); color: var(--terracotta-d); }
+    .btn-filtros .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--terracotta); }
+    .sort-select { border: 1px solid var(--line); border-radius: 2px; padding: 0.5rem 0.8rem; font-size: 0.8rem; color: var(--text); background: #fff; cursor: pointer; }
+    .sort-select:focus { border-color: var(--terracotta); outline: none; box-shadow: none; }
+    .filtros-panel { border: 1px solid var(--line); border-radius: 4px; background: #fff; padding: 1.2rem 1.3rem; margin-bottom: 1.8rem; }
+    .filtro-label { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.5rem; display: block; }
+    .filtros-panel input.price-in { width: 100px; border: 1px solid var(--line); border-radius: 2px; padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+    .filtros-panel input.price-in:focus { border-color: var(--terracotta); outline: none; }
 
     .product-card .ph { position: relative; aspect-ratio: 1/1; overflow: hidden; border-radius: 6px 6px 0 0; }
     .product-card .ph img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
@@ -60,26 +73,53 @@
     {% endfor %}
 </div>
 
-<!-- Toolbar: búsqueda, orden, precio, stock -->
-<form method="get" class="toolbar">
+<!-- Toolbar: búsqueda, orden, y filtros avanzados colapsables -->
+<form method="get" id="catalogForm">
     {% if categoria_actual %}<input type="hidden" name="categoria" value="{{ categoria_actual.slug }}">{% endif %}
-    <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre, aroma..." class="input-line" style="width:240px;">
-    <select name="orden" class="form-select" style="max-width:170px;">
-        <option value="recientes"   {% if orden_actual == "recientes" %}selected{% endif %}>Más recientes</option>
-        <option value="precio_asc"  {% if orden_actual == "precio_asc" %}selected{% endif %}>Precio: menor a mayor</option>
-        <option value="precio_desc" {% if orden_actual == "precio_desc" %}selected{% endif %}>Precio: mayor a menor</option>
-        <option value="nombre"      {% if orden_actual == "nombre" %}selected{% endif %}>Nombre A–Z</option>
-    </select>
-    <input type="number" name="precio_min" value="{{ precio_min }}" placeholder="$ desde" class="input-line" style="width:90px;" min="0">
-    <input type="number" name="precio_max" value="{{ precio_max }}" placeholder="$ hasta" class="input-line" style="width:90px;" min="0">
-    <div class="form-check ms-2">
-        <input class="form-check-input" type="checkbox" id="en_stock" name="en_stock" value="1" {% if solo_en_stock %}checked{% endif %}>
-        <label class="form-check-label small" for="en_stock">Solo en stock</label>
+
+    <div class="cat-tools">
+        <label class="cat-search">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre, aroma...">
+        </label>
+        <div class="cat-tools-right">
+            <button class="btn-filtros" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosPanel" aria-expanded="{% if precio_min or precio_max or solo_en_stock %}true{% else %}false{% endif %}">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+                Filtros{% if precio_min or precio_max or solo_en_stock %} <span class="dot"></span>{% endif %}
+            </button>
+            <select name="orden" class="sort-select" onchange="this.form.submit()" aria-label="Ordenar por">
+                <option value="recientes"   {% if orden_actual == "recientes" %}selected{% endif %}>Más recientes</option>
+                <option value="precio_asc"  {% if orden_actual == "precio_asc" %}selected{% endif %}>Precio: menor a mayor</option>
+                <option value="precio_desc" {% if orden_actual == "precio_desc" %}selected{% endif %}>Precio: mayor a menor</option>
+                <option value="nombre"      {% if orden_actual == "nombre" %}selected{% endif %}>Nombre A–Z</option>
+            </select>
+        </div>
     </div>
-    <button type="submit" class="btn btn-primary btn-sm">Aplicar</button>
-    {% if q or precio_min or precio_max or solo_en_stock or orden_actual != "recientes" %}
-        <a href="{% if categoria_actual %}?categoria={{ categoria_actual.slug }}{% else %}{% url 'catalogo:lista_productos' %}{% endif %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
-    {% endif %}
+
+    <div class="collapse {% if precio_min or precio_max or solo_en_stock %}show{% endif %}" id="filtrosPanel">
+        <div class="filtros-panel">
+            <div class="d-flex flex-wrap align-items-end gap-4">
+                <div>
+                    <label class="filtro-label">Rango de precio</label>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="number" name="precio_min" value="{{ precio_min }}" placeholder="$ desde" class="price-in" min="0">
+                        <span class="text-muted">—</span>
+                        <input type="number" name="precio_max" value="{{ precio_max }}" placeholder="$ hasta" class="price-in" min="0">
+                    </div>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="en_stock" name="en_stock" value="1" {% if solo_en_stock %}checked{% endif %}>
+                    <label class="form-check-label small" for="en_stock">Solo en stock</label>
+                </div>
+                <div class="ms-auto d-flex gap-2">
+                    {% if q or precio_min or precio_max or solo_en_stock or orden_actual != "recientes" %}
+                        <a href="{% if categoria_actual %}?categoria={{ categoria_actual.slug }}{% else %}{% url 'catalogo:lista_productos' %}{% endif %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary btn-sm">Aplicar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </form>
 
 <!-- Grid -->
