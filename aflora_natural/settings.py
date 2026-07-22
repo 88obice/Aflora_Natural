@@ -123,6 +123,11 @@ SITE_NAME = os.getenv('SITE_NAME', 'Aflora Natural')
 # pasar a False el dia que el catalogo este listo. No requiere tocar codigo.
 SITE_NOINDEX = os.getenv('SITE_NOINDEX', 'False') == 'True'
 
+# Imagen del hero de la home. Si tiene una URL (ej. una foto en Cloudinary),
+# el inicio muestra esa foto; si esta vacia, cae en la ilustracion SVG por
+# defecto. Permite cambiar/quitar la foto sin tocar codigo.
+HERO_IMAGEN_URL = os.getenv('HERO_IMAGEN_URL', '').strip()
+
 # Umbral de envio gratis (en CLP). Fuente unica de verdad: antes estaba
 # hardcodeado en 3 archivos (envios.py, carrito, pedidos). Configurable por env
 # para que se ajuste sin tocar codigo.

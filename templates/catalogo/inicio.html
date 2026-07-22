@@ -37,6 +37,7 @@
     .hero-stats .l { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
     .hero-art { display: flex; justify-content: center; }
     .hero-art svg { width: 100%; max-width: 360px; height: auto; filter: drop-shadow(0 20px 40px rgba(107,69,40,0.16)); }
+    .hero-art .hero-photo { width: 100%; max-width: 420px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 14px; box-shadow: 0 20px 40px rgba(107,69,40,0.18); }
 
     /* ── Franja de confianza ── */
     .trust { background: #fff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -120,6 +121,9 @@
             </div>
         </div>
         <div class="hero-art">
+            {% if hero_imagen %}
+            <img src="{{ hero_imagen }}" alt="Aflora Natural — velas artesanales" class="hero-photo">
+            {% else %}
             <svg viewBox="0 0 300 340" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <ellipse cx="150" cy="312" rx="120" ry="16" fill="#C9A99A" opacity=".3"/>
                 <path d="M150 40c14 14 22 26 22 40 0 15-10 24-22 24s-22-9-22-24c0-14 8-26 22-40z" fill="#F0C27B"/>
@@ -132,6 +136,7 @@
                 <path d="M60 250q20-30 44-18M240 250q-20-30-44-18" stroke="#C9A99A" stroke-width="1.5" fill="none" opacity=".7"/>
                 <circle cx="60" cy="250" r="3" fill="#C4933F"/><circle cx="240" cy="250" r="3" fill="#C4933F"/>
             </svg>
+            {% endif %}
         </div>
     </div>
 </section>

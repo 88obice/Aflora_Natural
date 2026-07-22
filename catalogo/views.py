@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -34,6 +35,7 @@ def inicio(request):
     return render(request, 'catalogo/inicio.html', {
         'productos': productos_destacados,
         'categorias': categorias,
+        'hero_imagen': settings.HERO_IMAGEN_URL,
     })
 
 
