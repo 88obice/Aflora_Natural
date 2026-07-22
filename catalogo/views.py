@@ -301,6 +301,10 @@ def pagina_contacto(request):
 
 def unsubscribe_newsletter(request, token):
     """Pagina publica de baja del newsletter."""
+    # Token del modo prueba/preview: no es un suscriptor real. Mostramos un
+    # mensaje claro en vez de "link no valido" (evita el falso susto al probar).
+    if token == 'preview-test':
+        return render(request, 'catalogo/unsubscribe_ok.html', {'preview': True})
     s = SuscriptorNewsletter.objects.filter(token_baja=token).first()
     if s and s.activo:
         s.activo = False

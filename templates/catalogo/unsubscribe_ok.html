@@ -4,7 +4,10 @@
 <div class="row justify-content-center mt-4">
     <div class="col-md-6">
         <div class="card p-4 text-center" style="background:#fff; border-color:var(--rose-light);">
-            {% if invalido %}
+            {% if preview %}
+                <h3 style="font-size:1.3rem;">Este es un correo de prueba</h3>
+                <p class="text-muted">En los envíos reales, este link da de baja al suscriptor de forma automática. No hay nada que hacer aquí.</p>
+            {% elif invalido %}
                 <h3 style="font-size:1.3rem;">Link no válido</h3>
                 <p class="text-muted">Este link de baja no es correcto o ya expiró.</p>
             {% elif ya_dado_de_baja %}
