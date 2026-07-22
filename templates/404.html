@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Página no encontrada · Aflora Natural{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<section class="error-page text-center">
+    <div class="error-emblem" aria-hidden="true">
+        {# Rama botánica decorativa, en línea con el resto del sitio #}
+        <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21c0-5 0-9 0-13"/>
+            <path d="M12 12c-2.2 0-4-1.8-4-4 2.2 0 4 1.8 4 4z"/>
+            <path d="M12 9c2.2 0 4-1.8 4-4-2.2 0-4 1.8-4 4z"/>
+            <path d="M12 15c-1.8 0-3.2-1.4-3.2-3.2 1.8 0 3.2 1.4 3.2 3.2z"/>
+            <path d="M12 15c1.8 0 3.2-1.4 3.2-3.2-1.8 0-3.2 1.4-3.2 3.2z"/>
+        </svg>
+    </div>
+
+    <div class="error-code eyebrow">Error 404</div>
+    <h1 class="error-title serif">Página no encontrada</h1>
+    <p class="error-text">
+        Lo sentimos, la página que buscas ya no está disponible o cambió de lugar.
+        Puede que el enlace esté mal escrito o que el producto ya no exista.
+    </p>
+
+    <div class="error-actions">
+        <a href="{% url 'catalogo:inicio' %}" class="btn btn-primary">Ir a la página principal</a>
+        <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-outline-primary">Ver el catálogo</a>
+    </div>
+
+    <div class="divider-floral">✦ ✦ ✦</div>
+
+    <p class="error-help">
+        ¿Necesitas ayuda? Escríbenos por
+        <a href="https://wa.me/56989560937" target="_blank" rel="noopener">WhatsApp</a>{% if CONTACTO.email %}
+        o a <a href="mailto:{{ CONTACTO.email }}">{{ CONTACTO.email }}</a>{% endif %}.
+    </p>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .error-page {
+        max-width: 620px;
+        margin: 0 auto;
+        padding: 4rem 1rem 5rem;
+    }
+    .error-emblem { color: var(--rose); margin-bottom: 1.5rem; }
+    .error-code { display: block; margin-bottom: 0.6rem; }
+    .error-title {
+        font-size: clamp(2rem, 5vw, 3rem);
+        color: var(--terracotta-d);
+        margin-bottom: 1rem;
+    }
+    .error-text {
+        color: var(--text-muted);
+        font-size: 1.02rem;
+        line-height: 1.7;
+        max-width: 460px;
+        margin: 0 auto 2rem;
+    }
+    .error-actions {
+        display: flex;
+        gap: 0.8rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .error-help { font-size: 0.9rem; color: var(--text-muted); }
+    .error-help a { color: var(--terracotta); text-decoration: none; font-weight: 700; }
+    .error-help a:hover { text-decoration: underline; }
+</style>
+{% endblock %}

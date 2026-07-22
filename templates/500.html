@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Algo salió mal · Aflora Natural</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cream: #FAF6F1;
+            --terracotta: #8B5E3C;
+            --terracotta-d: #6B4528;
+            --rose: #C9A99A;
+            --text-muted: #9B7E68;
+        }
+        * { box-sizing: border-box; margin: 0; }
+        body {
+            background-color: var(--cream);
+            color: #3D2B1F;
+            font-family: 'Lato', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        .box { max-width: 560px; }
+        .emblem { color: var(--rose); margin-bottom: 1.4rem; }
+        .code {
+            font-size: 0.72rem; letter-spacing: 0.26em; text-transform: uppercase;
+            color: var(--terracotta); font-weight: 700; display: block; margin-bottom: 0.6rem;
+        }
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.9rem, 5vw, 2.8rem);
+            color: var(--terracotta-d);
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        p {
+            color: var(--text-muted);
+            font-size: 1.02rem;
+            line-height: 1.7;
+            margin: 0 auto 2rem;
+            max-width: 440px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: var(--terracotta);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 2px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 0.75rem 1.8rem;
+            transition: background-color 0.2s;
+        }
+        .btn:hover { background-color: var(--terracotta-d); }
+        .help { font-size: 0.88rem; margin-top: 2rem; }
+        .help a { color: var(--terracotta); text-decoration: none; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="emblem" aria-hidden="true">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 21c0-5 0-9 0-13"/>
+                <path d="M12 12c-2.2 0-4-1.8-4-4 2.2 0 4 1.8 4 4z"/>
+                <path d="M12 9c2.2 0 4-1.8 4-4-2.2 0-4 1.8-4 4z"/>
+                <path d="M12 15c-1.8 0-3.2-1.4-3.2-3.2 1.8 0 3.2 1.4 3.2 3.2z"/>
+                <path d="M12 15c1.8 0 3.2-1.4 3.2-3.2-1.8 0-3.2 1.4-3.2 3.2z"/>
+            </svg>
+        </div>
+        <span class="code">Error 500</span>
+        <h1>Algo salió mal de nuestro lado</h1>
+        <p>
+            Tuvimos un problema temporal al procesar tu solicitud. Ya estamos al tanto.
+            Por favor, intenta de nuevo en unos minutos.
+        </p>
+        <a href="/" class="btn">Volver al inicio</a>
+        <p class="help">
+            Si el problema continúa, escríbenos por
+            <a href="https://wa.me/56989560937" target="_blank" rel="noopener">WhatsApp</a>.
+        </p>
+    </div>
+</body>
+</html>
