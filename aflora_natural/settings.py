@@ -110,8 +110,16 @@ else:
     }
 
 
-# Necesario para django.contrib.sites (lo usa el sitemap)
+# Necesario para django.contrib.sites (lo usa el sitemap y los links de emails).
+# El dominio del registro Site se autoconfigura desde BASE_URL en cada deploy
+# via el command `configurar_sitio` (evita que quede en el default 'example.com').
 SITE_ID = 1
+SITE_NAME = os.getenv('SITE_NAME', 'Aflora Natural')
+
+# Umbral de envio gratis (en CLP). Fuente unica de verdad: antes estaba
+# hardcodeado en 3 archivos (envios.py, carrito, pedidos). Configurable por env
+# para que se ajuste sin tocar codigo.
+ENVIO_GRATIS_UMBRAL = int(os.getenv('ENVIO_GRATIS_UMBRAL', '40000'))
 
 
 # ── Contraseñas ─────────────────────────────────────────────────────────────

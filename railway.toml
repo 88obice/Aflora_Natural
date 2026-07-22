@@ -5,7 +5,7 @@ builder = "nixpacks"
 # collectstatic se movio a la fase de BUILD (ver nixpacks.toml) — los archivos
 # generados en preDeploy no persisten al contenedor de runtime y eso causaba
 # 404 sobre /static/admin/css/* en produccion.
-preDeployCommand = "python manage.py migrate --noinput && python manage.py crear_superusuario"
+preDeployCommand = "python manage.py migrate --noinput && python manage.py crear_superusuario && python manage.py configurar_sitio"
 startCommand = "gunicorn aflora_natural.wsgi --workers 2 --bind 0.0.0.0:$PORT"
 healthcheckPath = "/"
 healthcheckTimeout = 30
