@@ -32,9 +32,6 @@
     .hero h1 i { font-style: italic; font-weight: 500; color: var(--terracotta); }
     .hero .lead { font-size: 1.05rem; color: var(--text-muted); max-width: 440px; margin-bottom: 2rem; }
     .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; }
-    .hero-stats { display: flex; gap: 2.2rem; margin-top: 2.5rem; }
-    .hero-stats .n { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--terracotta-d); }
-    .hero-stats .l { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
     .hero-art { display: flex; justify-content: center; }
     .hero-art svg { width: 100%; max-width: 360px; height: auto; filter: drop-shadow(0 20px 40px rgba(107,69,40,0.16)); }
     /* Hero full-bleed: foto de fondo + velo oscuro (se activa con HERO_IMAGEN_URL) */
@@ -49,8 +46,6 @@
     .hero--foto h1 { color: #fff; }
     .hero--foto h1 i { color: #F0C27B; }
     .hero--foto .lead { color: rgba(255,255,255,0.92); }
-    .hero--foto .hero-stats .n { color: #fff; }
-    .hero--foto .hero-stats .l { color: rgba(255,255,255,0.82); }
     .hero--foto .btn-outline-primary { color: #fff; border-color: rgba(255,255,255,0.65); }
     .hero--foto .btn-outline-primary:hover { background: rgba(255,255,255,0.15); border-color: #fff; }
 
@@ -81,14 +76,15 @@
         display: flex; align-items: center; justify-content: center;
     }
     .product-card .cat-tag {
-        position: absolute; top: 12px; left: 12px; background: rgba(255,255,255,0.9);
+        position: absolute; top: 12px; left: 12px; z-index: 3; pointer-events: none;
+        background: rgba(255,255,255,0.9);
         color: var(--terracotta-d); font-size: 0.64rem; letter-spacing: 0.09em; text-transform: uppercase;
         padding: 0.3rem 0.7rem; border-radius: 2px; font-weight: 700;
     }
     .rating-stars { color: var(--amber); font-size: 0.85rem; }
 
     /* ── Historia ── */
-    .story { background: linear-gradient(180deg, #fff 0%, var(--cream) 100%); }
+    .story { background: linear-gradient(180deg, #fff 0%, var(--cream) 100%); scroll-margin-top: 90px; }
     .story-inner { max-width: 1180px; margin: 0 auto; padding: 4.5rem 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
     .story-art { background: var(--cream-dark); border-radius: 8px; padding: 2rem; display: flex; align-items: center; justify-content: center; aspect-ratio: 4/3; border: 1px solid var(--line); }
     .story-art svg { width: 100%; max-width: 300px; height: auto; }
@@ -128,17 +124,11 @@
     <div class="hero-blob b2"></div>
     <div class="hero-inner">
         <div class="hero-copy">
-            <div class="eyebrow">Velas · Homesprays · Difusores</div>
             <h1>Aromas que <i>transforman</i> tu hogar</h1>
             <p class="lead">Fragancias artesanales elaboradas a mano en pequeños lotes, con ingredientes naturales. Cada aroma, una experiencia para tus espacios.</p>
             <div class="hero-cta">
                 <a href="{% url 'catalogo:lista_productos' %}" class="btn btn-primary">Ver catálogo</a>
-                <a href="{% url 'catalogo:sobre_nosotros' %}" class="btn btn-outline-primary">Nuestra historia</a>
-            </div>
-            <div class="hero-stats">
-                <div><div class="n">100%</div><div class="l">Natural</div></div>
-                <div><div class="n">Hecho</div><div class="l">a mano</div></div>
-                <div><div class="n">Chile</div><div class="l">Envío nacional</div></div>
+                <a href="#nuestra-historia" class="btn btn-outline-primary">Nuestra historia</a>
             </div>
         </div>
         {% if not hero_imagen %}
@@ -218,7 +208,7 @@
     </div>
 </div>
 
-<div class="story">
+<div class="story" id="nuestra-historia">
     <div class="story-inner">
         <div class="story-art">
             <svg viewBox="0 0 320 240" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -233,7 +223,7 @@
             <h2>Los aromas son emociones que se respiran</h2>
             <p>Aflora Natural nació con una convicción simple: los aromas tienen el poder de transformar un espacio y el estado de ánimo de quienes lo habitan. Cada vela, cada homespray y cada difusor que elaboramos lleva ese propósito.</p>
             <p>Trabajamos con ingredientes naturales, en pequeños lotes artesanales, desde Santiago de Chile para todo el país.</p>
-            <a href="{% url 'catalogo:sobre_nosotros' %}" class="btn btn-outline-primary">Conocer más</a>
+            <a href="{% url 'catalogo:pagina_contacto' %}" class="btn btn-outline-primary">Contáctanos</a>
         </div>
     </div>
 </div>

@@ -75,6 +75,8 @@
 
         * { box-sizing: border-box; }
 
+        html { scroll-behavior: smooth; }
+
         body {
             background-color: var(--cream);
             color: var(--text);
@@ -295,8 +297,6 @@
 </head>
 <body>
 
-    <div class="announce-bar">Hecho a mano en Santiago · Envío a todo Chile · 100% natural</div>
-
     <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="{% url 'catalogo:inicio' %}">
@@ -309,9 +309,6 @@
                 <ul class="navbar-nav mx-auto align-items-lg-center gap-lg-4">
                     <li class="nav-item">
                         <a class="nav-link" href="#" role="button" data-bs-toggle="offcanvas" data-bs-target="#catalogoDrawer" aria-controls="catalogoDrawer">Catálogo</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'catalogo:sobre_nosotros' %}">Nosotros</a>
                     </li>
                 </ul>
                 <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-3">
