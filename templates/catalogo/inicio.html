@@ -38,7 +38,7 @@
     .hero-art { display: flex; justify-content: center; }
     .hero-art svg { width: 100%; max-width: 360px; height: auto; filter: drop-shadow(0 20px 40px rgba(107,69,40,0.16)); }
     /* Hero full-bleed: foto de fondo + velo oscuro (se activa con HERO_IMAGEN_URL) */
-    .hero--foto { min-height: 540px; display: flex; align-items: center; background-color: #2d1d12; background-size: cover; background-position: center; }
+    .hero--foto { min-height: 100vh; display: flex; align-items: center; background-color: #2d1d12; background-size: cover; background-position: center; }
     .hero--foto .hero-overlay { position: absolute; inset: 0; z-index: 1; background: linear-gradient(100deg, rgba(45,29,18,0.85) 0%, rgba(45,29,18,0.5) 40%, rgba(45,29,18,0.1) 74%, rgba(45,29,18,0) 100%); }
     .hero--foto .hero-blob { display: none; }
     .hero--foto .hero-inner { width: 100%; grid-template-columns: 1fr; }
@@ -109,8 +109,9 @@
         .hero-art { order: -1; }
         .trust-inner { grid-template-columns: repeat(2, 1fr); }
         /* En movil la foto queda de fondo completo: velo mas parejo y de abajo
-           hacia arriba para que el texto se lea sobre cualquier parte de la foto. */
-        .hero--foto { min-height: 460px; }
+           hacia arriba para que el texto se lea sobre cualquier parte de la foto.
+           100svh = alto de pantalla real (descuenta las barras del navegador movil). */
+        .hero--foto { min-height: 100svh; }
         .hero--foto .hero-overlay { background: linear-gradient(180deg, rgba(45,29,18,0.55) 0%, rgba(45,29,18,0.8) 100%); }
     }
 </style>
