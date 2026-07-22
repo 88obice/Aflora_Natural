@@ -30,6 +30,11 @@ def banco_info(request):
     }
 
 
+def seo_flags(request):
+    """Expone el kill-switch de indexacion (SITE_NOINDEX) a los templates."""
+    return {'SITE_NOINDEX': getattr(settings, 'SITE_NOINDEX', False)}
+
+
 def contacto_info(request):
     """
     Expone los datos de contacto centralizados (email, WhatsApp, Instagram)

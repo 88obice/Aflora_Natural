@@ -80,6 +80,7 @@ TEMPLATES = [
                 'aflora_natural.context_processors.analytics_ids',
                 'aflora_natural.context_processors.banco_info',
                 'aflora_natural.context_processors.contacto_info',
+                'aflora_natural.context_processors.seo_flags',
                 'aflora_natural.context_processors.categorias_nav',
             ],
         },
@@ -115,6 +116,12 @@ else:
 # via el command `configurar_sitio` (evita que quede en el default 'example.com').
 SITE_ID = 1
 SITE_NAME = os.getenv('SITE_NAME', 'Aflora Natural')
+
+# Kill-switch de indexacion. Con SITE_NOINDEX=True, TODO el sitio sale con
+# <meta name="robots" content="noindex, nofollow"> para que Google no lo indexe
+# mientras haya contenido de prueba. Poner en True hasta el lanzamiento real y
+# pasar a False el dia que el catalogo este listo. No requiere tocar codigo.
+SITE_NOINDEX = os.getenv('SITE_NOINDEX', 'False') == 'True'
 
 # Umbral de envio gratis (en CLP). Fuente unica de verdad: antes estaba
 # hardcodeado en 3 archivos (envios.py, carrito, pedidos). Configurable por env

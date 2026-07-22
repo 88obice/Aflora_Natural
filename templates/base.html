@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Aflora Natural{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}Velas aromáticas, homesprays y difusores artesanales hechos en Santiago de Chile con ingredientes naturales.{% endblock %}">
-    <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
+    <meta name="robots" content="{% if SITE_NOINDEX %}noindex, nofollow{% else %}{% block meta_robots %}index, follow{% endblock %}{% endif %}">
     <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
 
     <!-- Favicon (set generado con favicon.io) -->
