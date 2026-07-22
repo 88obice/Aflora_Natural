@@ -471,7 +471,7 @@ def crear_pedido(request):
         'comunas': comunas_disponibles(),
         'perfil': perfil,
         'direccion_predet': direccion_predet,
-        'umbral_envio_gratis': 40000,
+        'umbral_envio_gratis': settings.ENVIO_GRATIS_UMBRAL,
     })
 
 

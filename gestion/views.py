@@ -1,6 +1,7 @@
 import csv
 import logging
 from datetime import timedelta
+from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
@@ -242,8 +243,20 @@ def lista_pedidos(request):
             qs = qs.filter(Q(id=q) | Q(usuario__username__icontains=q) | Q(email_cliente__icontains=q) | Q(nombre_cliente__icontains=q))
         else:
             qs = qs.filter(Q(usuario__username__icontains=q) | Q(email_cliente__icontains=q) | Q(nombre_cliente__icontains=q) | Q(codigo_seguimiento__icontains=q))
+
+    # Paginacion real (antes se cortaba con [:200] en silencio).
+    paginator = Paginator(qs, 50)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    # Querystring sin 'page' para reusar en los links de paginacion
+    params = request.GET.copy()
+    params.pop('page', None)
+
     return render(request, 'gestion/pedidos.html', {
-        'pedidos': qs[:200],
+        'pedidos': page_obj.object_list,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'qs_params': params.urlencode(),
+        'total_pedidos': paginator.count,
         'estados': Pedido.ESTADO_CHOICES,
         'estado_actual': estado,
         'q': q,

@@ -13,6 +13,8 @@ Esto debe ajustarse cuando la duena confirme tarifas reales con el courier.
 """
 from decimal import Decimal
 
+from django.conf import settings
+
 
 COMUNAS_URBANAS_RM = [
     'Santiago', 'Providencia', 'Las Condes', 'Vitacura', 'Lo Barnechea',
@@ -39,7 +41,8 @@ COSTO_ENVIO_RM_URBANA = Decimal('3500')
 COSTO_ENVIO_RM_RESTO  = Decimal('4500')
 COSTO_ENVIO_REGIONES  = Decimal('5500')
 
-UMBRAL_ENVIO_GRATIS = Decimal('40000')
+# Fuente unica: settings.ENVIO_GRATIS_UMBRAL (configurable por env).
+UMBRAL_ENVIO_GRATIS = Decimal(str(settings.ENVIO_GRATIS_UMBRAL))
 
 
 def calcular_costo_envio(metodo, comuna, region, subtotal):
