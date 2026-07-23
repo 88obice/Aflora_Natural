@@ -94,6 +94,10 @@ class PerfilForm(_BootstrapMixin, forms.ModelForm):
             self.fields['first_name'].initial = usuario.first_name
             self.fields['last_name'].initial = usuario.last_name
             self.fields['email'].initial = usuario.email
+        # Telefono: prefijo chileno fijo para que el cliente no lo tipee.
+        self.fields['telefono'].widget.attrs['placeholder'] = '+56 9 1234 5678'
+        if not (self.instance and self.instance.telefono):
+            self.fields['telefono'].initial = '+56 9 '
         # checkbox no usa form-control
         self.fields['recibir_newsletter'].widget.attrs['class'] = 'form-check-input'
 
@@ -118,3 +122,7 @@ class DireccionForm(_BootstrapMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['es_predeterminada'].widget.attrs['class'] = 'form-check-input'
+        # Telefono: prefijo chileno fijo.
+        self.fields['telefono'].widget.attrs['placeholder'] = '+56 9 1234 5678'
+        if not (self.instance and self.instance.pk and self.instance.telefono):
+            self.fields['telefono'].initial = '+56 9 '

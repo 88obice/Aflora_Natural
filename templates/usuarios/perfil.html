@@ -3,23 +3,57 @@
 
 {% block title %}Mi cuenta — Aflora Natural{% endblock %}
 
+{% block extra_css %}
+<style>
+    .acc-header { padding:1.8rem 0 1.4rem; border-bottom:1px solid var(--rose-light); margin-bottom:2rem; }
+    .acc-header h2 { margin:0; }
+    .acc-header .acc-sub { color:var(--text-muted); font-size:0.9rem; margin-top:0.2rem; }
+    .acc-menu { border-color:var(--line); }
+    .acc-menu-title { font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted); font-weight:700; padding:0 0.2rem 0.6rem; }
+    .acc-link { display:flex; align-items:center; gap:0.65rem; padding:0.6rem 0.7rem; border-radius:4px; color:var(--text); text-decoration:none; font-size:0.9rem; transition:0.15s; }
+    .acc-link:hover { background:var(--cream-dark); color:var(--terracotta-d); }
+    .acc-link svg { flex:none; color:var(--terracotta-l); }
+    .acc-link.acc-logout { color:var(--text-muted); }
+    .acc-link.acc-logout:hover { color:#c0392b; background:#fbeeee; }
+    .acc-link.acc-logout:hover svg { color:#c0392b; }
+    .acc-card h5 { font-size:1.05rem; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header" style="padding:1.5rem 0; border-bottom:1px solid var(--rose-light); margin-bottom:2rem;">
+<div class="acc-header">
     <h2>Hola, {{ user.first_name|default:user.username }}</h2>
+    <div class="acc-sub">Gestiona tus pedidos, direcciones y datos desde aquí.</div>
 </div>
 
 <div class="row g-4">
     <div class="col-md-3">
-        <div class="card p-3" style="border-color:var(--rose-light);">
-            <strong style="font-family:'Playfair Display', serif;">Tu cuenta</strong>
-            <ul class="list-unstyled mt-2 mb-0 small">
-                <li><a href="{% url 'usuarios:editar_perfil' %}" style="color:var(--terracotta);">Editar perfil</a></li>
-                <li><a href="{% url 'usuarios:direcciones' %}" style="color:var(--terracotta);">Mis direcciones</a></li>
-                <li><a href="{% url 'pedidos:historial' %}" style="color:var(--terracotta);">Historial de pedidos</a></li>
-                <li><a href="{% url 'catalogo:ver_wishlist' %}" style="color:var(--terracotta);">Mis favoritos</a></li>
-                <li><a href="{% url 'usuarios:password_reset' %}" style="color:var(--terracotta);">Cambiar contraseña</a></li>
-                <li><a href="{% url 'usuarios:logout' %}" style="color:var(--text-muted);">Cerrar sesión</a></li>
-            </ul>
+        <div class="card acc-menu p-3">
+            <div class="acc-menu-title">Tu cuenta</div>
+            <a class="acc-link" href="{% url 'usuarios:editar_perfil' %}">
+                <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+                Editar perfil
+            </a>
+            <a class="acc-link" href="{% url 'usuarios:direcciones' %}">
+                <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M12 21c4.5-5.5 7-9 7-12a7 7 0 0 0-14 0c0 3 2.5 6.5 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                Mis direcciones
+            </a>
+            <a class="acc-link" href="{% url 'pedidos:historial' %}">
+                <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M6 4h11l3 3v13H6z"/><path d="M9 9h8M9 13h8M9 17h5"/></svg>
+                Historial de pedidos
+            </a>
+            <a class="acc-link" href="{% url 'catalogo:ver_wishlist' %}">
+                <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/></svg>
+                Mis favoritos
+            </a>
+            <a class="acc-link" href="{% url 'usuarios:password_reset' %}">
+                <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                Cambiar contraseña
+            </a>
+            <a class="acc-link acc-logout" href="{% url 'usuarios:logout' %}">
+                <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+                Cerrar sesión
+            </a>
         </div>
     </div>
 

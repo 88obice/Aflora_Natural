@@ -13,8 +13,19 @@
                 <div class="col-md-8"><label class="form-label">Destinatario</label>{{ form.nombre_destinatario }}</div>
                 <div class="col-md-8"><label class="form-label">Calle y número</label>{{ form.calle_numero }}</div>
                 <div class="col-md-4"><label class="form-label">Depto</label>{{ form.depto }}</div>
-                <div class="col-md-6"><label class="form-label">Comuna</label>{{ form.comuna }}</div>
-                <div class="col-md-6"><label class="form-label">Región</label>{{ form.region }}</div>
+                <div class="col-md-6">
+                    <label class="form-label">Región</label>
+                    <select name="region" class="form-select" id="dirRegion" data-selected="{{ form.region.value|default:'' }}">
+                        <option value="">Selecciona...</option>
+                        {% for r in REGIONES_LISTA %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Comuna</label>
+                    <select name="comuna" class="form-select" id="dirComuna" data-selected="{{ form.comuna.value|default:'' }}">
+                        <option value="">Selecciona una región primero</option>
+                    </select>
+                </div>
                 <div class="col-12"><label class="form-label">Referencia</label>{{ form.referencia }}</div>
                 <div class="col-md-6"><label class="form-label">Teléfono</label>{{ form.telefono }}</div>
                 <div class="col-12">
@@ -32,4 +43,28 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const REGIONES_COMUNAS = {{ REGIONES_COMUNAS_JSON|safe }};
+    const norm = s => (s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const selRegion = document.getElementById('dirRegion');
+    const selComuna = document.getElementById('dirComuna');
+
+    function poblarComunas(preselect) {
+        const comunas = REGIONES_COMUNAS[selRegion.value] || [];
+        selComuna.innerHTML = '<option value="">Selecciona...</option>';
+        comunas.forEach(c => {
+            const o = document.createElement('option');
+            o.value = c; o.textContent = c;
+            if (preselect && norm(preselect) === norm(c)) o.selected = true;
+            selComuna.appendChild(o);
+        });
+    }
+
+    if (selRegion.dataset.selected) selRegion.value = selRegion.dataset.selected;
+    poblarComunas(selComuna.dataset.selected);
+    selRegion.addEventListener('change', () => poblarComunas());
+</script>
 {% endblock %}

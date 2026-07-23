@@ -15,6 +15,8 @@ from decimal import Decimal
 
 from django.conf import settings
 
+from .regiones_chile import normalizar
+
 
 COMUNAS_URBANAS_RM = [
     'Santiago', 'Providencia', 'Las Condes', 'Vitacura', 'Lo Barnechea',
@@ -44,6 +46,9 @@ COSTO_ENVIO_REGIONES  = Decimal('5500')
 # Fuente unica: settings.ENVIO_GRATIS_UMBRAL (configurable por env).
 UMBRAL_ENVIO_GRATIS = Decimal(str(settings.ENVIO_GRATIS_UMBRAL))
 
+# Sets normalizados (sin tildes/ñ) para comparar comunas sin importar el acento.
+_URBANAS_RM_NORM = {normalizar(c) for c in COMUNAS_URBANAS_RM}
+
 
 def calcular_costo_envio(metodo, comuna, region, subtotal):
     """Devuelve Decimal con el costo de envio para los parametros dados."""
@@ -54,12 +59,12 @@ def calcular_costo_envio(metodo, comuna, region, subtotal):
     if subtotal >= UMBRAL_ENVIO_GRATIS:
         return Decimal('0')
 
-    es_rm = (region or '').strip().lower().startswith('region metropolitana')
+    # RM si el nombre de region contiene 'metropolitana' (tolerante a tildes/formato).
+    es_rm = 'metropolitana' in normalizar(region)
     if not es_rm:
         return COSTO_ENVIO_REGIONES
 
-    comuna_n = (comuna or '').strip()
-    if comuna_n in COMUNAS_URBANAS_RM:
+    if normalizar(comuna) in _URBANAS_RM_NORM:
         return COSTO_ENVIO_RM_URBANA
     return COSTO_ENVIO_RM_RESTO
 

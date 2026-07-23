@@ -25,8 +25,8 @@
 
 {% block content %}
 <div class="auth-panel">
-    <h2>Bienvenida</h2>
-    <div class="subtitle">Inicia sesión para continuar</div>
+    <h2>Iniciar sesión</h2>
+    <div class="subtitle">Ingresa a tu cuenta para continuar</div>
     <form method="post" novalidate>
         {% csrf_token %}
         {% if form.non_field_errors %}

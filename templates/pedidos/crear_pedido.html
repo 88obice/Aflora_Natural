@@ -13,6 +13,10 @@
     .summary-box { background:var(--cream-dark); border-radius:4px; padding:1.5rem; position:sticky; top:1rem; }
     .summary-row { display:flex; justify-content:space-between; padding:0.4rem 0; font-size:0.9rem; }
     .summary-total { display:flex; justify-content:space-between; padding:1rem 0 0; border-top:1px solid var(--rose-light); margin-top:0.5rem; font-family:'Playfair Display', serif; font-size:1.3rem; color: var(--terracotta); }
+    .sum-item { display:flex; align-items:center; gap:0.65rem; }
+    .sum-thumb { width:42px; height:42px; object-fit:cover; border-radius:3px; flex:none; border:1px solid var(--rose-light); }
+    .sum-thumb-ph { width:42px; height:42px; border-radius:3px; flex:none; background:linear-gradient(135deg,#F0E8DE,#EDD9D1); }
+    .sum-qty { color:var(--text-muted); font-weight:700; }
     .metodo-envio-card { border:1px solid var(--rose-light); border-radius:3px; padding:0.8rem 1rem; cursor:pointer; transition:border-color 0.15s, background-color 0.15s; }
     .metodo-envio-card.active { border-color: var(--terracotta); background-color: var(--cream-dark); }
     .metodo-envio-card label { cursor:pointer; margin:0; }
@@ -83,19 +87,22 @@
                                value="{% if direccion_predet %}{{ direccion_predet.depto }}{% endif %}">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Comuna *</label>
-                        <select name="comuna" class="form-select" id="selectComuna">
+                        <label class="form-label">Región *</label>
+                        <select name="region" class="form-select" id="selectRegion"
+                                data-selected="{% if direccion_predet %}{{ direccion_predet.region }}{% else %}Región Metropolitana de Santiago{% endif %}">
                             <option value="">Selecciona...</option>
-                            {% for v, l in comunas %}
-                                <option value="{{ v }}" {% if direccion_predet.comuna == v %}selected{% endif %}>{{ l }}</option>
+                            {% for r in REGIONES_LISTA %}
+                                <option value="{{ r }}">{{ r }}</option>
                             {% endfor %}
                         </select>
-                        <small class="text-muted">¿Tu comuna no está? Escríbenos por WhatsApp y vemos.</small>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Región</label>
-                        <input type="text" name="region" class="form-control"
-                               value="{% if direccion_predet %}{{ direccion_predet.region }}{% else %}Región Metropolitana{% endif %}">
+                        <label class="form-label">Comuna *</label>
+                        <select name="comuna" class="form-select" id="selectComuna"
+                                data-selected="{% if direccion_predet %}{{ direccion_predet.comuna }}{% endif %}">
+                            <option value="">Selecciona una región primero</option>
+                        </select>
+                        <small class="text-muted">¿Tu comuna no está? Escríbenos por WhatsApp y vemos.</small>
                     </div>
                     <div class="col-12">
                         <label class="form-label">Referencia (opcional)</label>
@@ -112,8 +119,8 @@
                     <div class="col-md-6">
                         <label class="form-label">Teléfono *</label>
                         <input type="tel" name="telefono" class="form-control" required maxlength="20"
-                               value="{% if perfil.telefono %}{{ perfil.telefono }}{% elif direccion_predet %}{{ direccion_predet.telefono }}{% endif %}"
-                               placeholder="+56 9 ...">
+                               value="{% if perfil.telefono %}{{ perfil.telefono }}{% elif direccion_predet.telefono %}{{ direccion_predet.telefono }}{% else %}+56 9 {% endif %}"
+                               placeholder="+56 9 1234 5678">
                     </div>
                 </div>
                 <div class="mt-3">
@@ -154,7 +161,14 @@
                 <h6 style="font-size:0.95rem; margin-bottom:1rem;">Tu pedido</h6>
                 {% for item in items %}
                 <div class="summary-row">
-                    <span>{{ item.cantidad }}× {{ item.nombre_mostrar }}</span>
+                    <span class="sum-item">
+                        {% if item.producto.imagen %}
+                            <img class="sum-thumb" src="{{ item.producto.imagen.url }}" alt="{{ item.producto.nombre }}">
+                        {% else %}
+                            <span class="sum-thumb-ph"></span>
+                        {% endif %}
+                        <span><span class="sum-qty">{{ item.cantidad }}×</span> {{ item.nombre_mostrar }}</span>
+                    </span>
                     <span>{{ item.subtotal|clp }}</span>
                 </div>
                 {% endfor %}
@@ -185,55 +199,71 @@
 
 {% block extra_js %}
 <script>
+    // Regiones y comunas de Chile (fuente: pedidos/regiones_chile.py)
+    const REGIONES_COMUNAS = {{ REGIONES_COMUNAS_JSON|safe }};
     // Costos (deben coincidir con pedidos/envios.py)
-    const COSTO_RETIRO = 0;
     const COSTO_RM_URBANA = 3500;
     const COSTO_RM_RESTO = 4500;
     const COSTO_REGIONES = 5500;
-    const UMBRAL_GRATIS = 40000;
-    const COMUNAS_URBANAS = [
-        'Santiago','Providencia','Las Condes','Vitacura','Lo Barnechea','Nunoa','Macul','La Reina','La Florida',
-        'Penalolen','Maipu','San Miguel','San Joaquin','Estacion Central','Independencia','Recoleta',
-        'Quinta Normal','Cerrillos','Pedro Aguirre Cerda','Lo Espejo','La Cisterna','San Bernardo',
-        'Puente Alto','La Granja','San Ramon','El Bosque','Conchali','Huechuraba','Renca','Quilicura',
-        'Cerro Navia','Lo Prado','Pudahuel'
-    ];
+    const UMBRAL_GRATIS = {{ umbral_envio_gratis|floatformat:0 }};
     const SUBTOTAL = {{ subtotal|floatformat:0 }};
+    // Comunas urbanas de la RM (normalizadas sin tildes; deben coincidir con envios.py)
+    const COMUNAS_URBANAS_RM = [
+        'santiago','providencia','las condes','vitacura','lo barnechea','nunoa','macul','la reina','la florida',
+        'penalolen','maipu','san miguel','san joaquin','estacion central','independencia','recoleta',
+        'quinta normal','cerrillos','pedro aguirre cerda','lo espejo','la cisterna','san bernardo',
+        'puente alto','la granja','san ramon','el bosque','conchali','huechuraba','renca','quilicura',
+        'cerro navia','lo prado','pudahuel'
+    ];
 
-    function formatoCLP(n) {
-        return '$' + Math.round(n).toLocaleString('es-CL');
+    const norm = s => (s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const formatoCLP = n => '$' + Math.round(n).toLocaleString('es-CL');
+
+    const selRegion = document.getElementById('selectRegion');
+    const selComuna = document.getElementById('selectComuna');
+
+    function poblarComunas(preselect) {
+        const comunas = REGIONES_COMUNAS[selRegion.value] || [];
+        selComuna.innerHTML = '<option value="">Selecciona...</option>';
+        comunas.forEach(c => {
+            const o = document.createElement('option');
+            o.value = c; o.textContent = c;
+            if (preselect && norm(preselect) === norm(c)) o.selected = true;
+            selComuna.appendChild(o);
+        });
     }
 
     function calcularEnvio() {
         const metodo = document.querySelector('input[name="metodo_envio"]:checked').value;
         if (metodo === 'retiro_local') return 0;
         if (SUBTOTAL >= UMBRAL_GRATIS) return 0;
-        const region = document.querySelector('input[name="region"]').value.trim().toLowerCase();
-        if (!region.startsWith('region metropolitana') && !region.startsWith('región metropolitana')) {
-            return COSTO_REGIONES;
-        }
-        const comuna = document.querySelector('select[name="comuna"]').value;
-        return COMUNAS_URBANAS.includes(comuna) ? COSTO_RM_URBANA : COSTO_RM_RESTO;
+        if (!norm(selRegion.value).includes('metropolitana')) return COSTO_REGIONES;
+        return COMUNAS_URBANAS_RM.includes(norm(selComuna.value)) ? COSTO_RM_URBANA : COSTO_RM_RESTO;
     }
 
     function actualizar() {
         const envio = calcularEnvio();
-        document.getElementById('envioMostrar').textContent = envio === 0 ? 'Gratis' : formatoCLP(envio);
-        document.getElementById('envioMostrar').classList.toggle('text-muted', envio === 0);
+        const el = document.getElementById('envioMostrar');
+        el.textContent = envio === 0 ? 'Gratis' : formatoCLP(envio);
+        el.classList.toggle('text-muted', envio === 0);
         document.getElementById('totalMostrar').textContent = formatoCLP(SUBTOTAL + envio);
     }
+
+    // Init: preseleccionar región y poblar comunas
+    if (selRegion.dataset.selected) selRegion.value = selRegion.dataset.selected;
+    poblarComunas(selComuna.dataset.selected);
+
+    selRegion.addEventListener('change', () => { poblarComunas(); actualizar(); });
+    selComuna.addEventListener('change', actualizar);
 
     document.querySelectorAll('input[name="metodo_envio"]').forEach(r => {
         r.addEventListener('change', function() {
             document.querySelectorAll('.metodo-envio-card').forEach(c => c.classList.remove('active'));
             this.closest('.metodo-envio-card').classList.add('active');
-            const seccionDir = document.getElementById('seccionDireccion');
-            seccionDir.style.display = this.value === 'retiro_local' ? 'none' : 'block';
+            document.getElementById('seccionDireccion').style.display = this.value === 'retiro_local' ? 'none' : 'block';
             actualizar();
         });
     });
-    document.querySelector('select[name="comuna"]').addEventListener('change', actualizar);
-    document.querySelector('input[name="region"]').addEventListener('input', actualizar);
     actualizar();
 
     // Cambio de metodo de pago: actualizar texto del boton y hint

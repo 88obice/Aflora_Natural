@@ -82,6 +82,7 @@ TEMPLATES = [
                 'aflora_natural.context_processors.contacto_info',
                 'aflora_natural.context_processors.seo_flags',
                 'aflora_natural.context_processors.categorias_nav',
+                'aflora_natural.context_processors.regiones_chile',
             ],
         },
     },
@@ -245,7 +246,7 @@ if _admin_email:
 # Por defecto el email publico usa el mismo que envia el correo (consistente
 # con la infra SMTP). La duenia puede sobreescribir CONTACTO_EMAIL en Railway.
 CONTACTO = {
-    'email':            (os.getenv('CONTACTO_EMAIL', '').strip() or DEFAULT_FROM_EMAIL or ''),
+    'email':            (os.getenv('CONTACTO_EMAIL', '').strip() or 'contacto@afloranat.com'),
     'whatsapp':         os.getenv('CONTACTO_WHATSAPP', '56989560937').strip(),
     'whatsapp_display': os.getenv('CONTACTO_WHATSAPP_DISPLAY', '+56 9 8956 0937').strip(),
     'instagram':        os.getenv('CONTACTO_INSTAGRAM', 'aflora_natural').strip(),

@@ -51,3 +51,15 @@ def categorias_nav(request):
     """
     from catalogo.models import Categoria
     return {'nav_categorias': Categoria.objects.all()}
+
+
+def regiones_chile(request):
+    """
+    Expone las regiones y comunas de Chile (JSON) para los selects encadenados
+    del checkout y el formulario de direcciones. Dato estatico, barato.
+    """
+    from pedidos.regiones_chile import REGIONES_COMUNAS_JSON, regiones
+    return {
+        'REGIONES_COMUNAS_JSON': REGIONES_COMUNAS_JSON,
+        'REGIONES_LISTA': regiones(),
+    }
