@@ -198,6 +198,17 @@ MP_ACCESS_TOKEN = os.getenv('MP_ACCESS_TOKEN')
 # notificaciones sin verificar firma (se registra advertencia).
 MP_WEBHOOK_SECRET = os.getenv('MP_WEBHOOK_SECRET', '')
 
+# ── Flow (pasarela principal) ───────────────────────────────────────────────
+# Patrón "dormido" (igual que BANCO): si FLOW_API_KEY/FLOW_SECRET_KEY están
+# vacías, la opción Flow NO aparece en el checkout. Cuando la dueña abra su
+# cuenta Flow (a SU nombre/RUT), se pegan las llaves reales en Railway y se
+# cambia FLOW_API_URL a producción — sin tocar código.
+#   Sandbox:    https://sandbox.flow.cl/api
+#   Producción: https://www.flow.cl/api
+FLOW_API_KEY    = os.getenv('FLOW_API_KEY', '').strip()
+FLOW_SECRET_KEY = os.getenv('FLOW_SECRET_KEY', '').strip()
+FLOW_API_URL    = os.getenv('FLOW_API_URL', 'https://sandbox.flow.cl/api').strip().rstrip('/')
+
 # ── Email ───────────────────────────────────────────────────────────────────
 EMAIL_BACKEND       = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 # Proveedor SMTP configurable por env. Por defecto Gmail (SSL 465).

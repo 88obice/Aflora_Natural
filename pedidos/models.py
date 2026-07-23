@@ -19,8 +19,36 @@ class Pedido(models.Model):
     ]
 
     METODO_PAGO_CHOICES = [
+        ('flow',          'Flow'),
         ('mercado_pago',  'Mercado Pago'),
         ('transferencia', 'Transferencia bancaria'),
+    ]
+
+    # Ciclo de vida del PAGO — eje independiente del `estado` (cumplimiento).
+    # Antes "pagado" se infería de estado != pendiente/cancelado; eso no podía
+    # representar "reembolsado" (ej: pago recibido pero sin stock → cancelado
+    # pero con plata que hay que devolver). Ahora es explícito.
+    ESTADO_PAGO_CHOICES = [
+        ('pendiente',   'Pendiente'),
+        ('pagado',      'Pagado'),
+        ('rechazado',   'Rechazado'),
+        ('reembolsado', 'Reembolsado'),
+    ]
+
+    # Instrumento REAL usado por el cliente. No se elige en el checkout: lo
+    # reporta la pasarela después de pagar (Flow: paymentData.media;
+    # MP: payment_method_id). Distinto de `metodo_pago`, que es la pasarela.
+    MEDIO_PAGO_CHOICES = [
+        ('webpay',           'Webpay'),
+        ('onepay',           'Onepay'),
+        ('mach',             'MACH'),
+        ('servipag',         'Servipag'),
+        ('multicaja',        'Multicaja'),
+        ('transferencia',    'Transferencia'),
+        ('tarjeta_credito',  'Tarjeta de crédito'),
+        ('tarjeta_debito',   'Tarjeta de débito'),
+        ('mercado_pago',     'Mercado Pago'),
+        ('otro',             'Otro'),
     ]
 
     # Usuario opcional para checkout invitado
@@ -57,8 +85,16 @@ class Pedido(models.Model):
 
     # Pago
     metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO_CHOICES, default='mercado_pago')
+    # Estado del pago (independiente del cumplimiento). Ver ESTADO_PAGO_CHOICES.
+    estado_pago = models.CharField(max_length=20, choices=ESTADO_PAGO_CHOICES,
+                                   default='pendiente', db_index=True)
+    # Instrumento real (webpay, mach, etc.) informado por la pasarela tras pagar.
+    medio_pago_detalle = models.CharField(max_length=30, choices=MEDIO_PAGO_CHOICES, blank=True)
     mp_payment_id = models.CharField(max_length=80, blank=True, db_index=True)
     mp_status = models.CharField(max_length=30, blank=True)
+    # Identificadores de Flow (análogos a mp_payment_id/mp_status).
+    flow_token = models.CharField(max_length=100, blank=True, db_index=True)
+    flow_order = models.CharField(max_length=40, blank=True)
     # Comprobante opcional para transferencias (el cliente sube screenshot)
     comprobante_transferencia = models.ImageField(
         upload_to='comprobantes/', blank=True, null=True,

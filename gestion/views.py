@@ -370,18 +370,21 @@ def exportar_pedidos_csv(request):
     response['Content-Disposition'] = 'attachment; filename="pedidos_aflora.csv"'
     response.write('﻿')  # BOM para que Excel abra UTF-8 bien
     w = csv.writer(response)
-    w.writerow(['ID', 'Fecha', 'Estado', 'Cliente', 'Email', 'Telefono',
+    w.writerow(['ID', 'Fecha', 'Estado', 'Estado pago', 'Metodo pago', 'Medio pago',
+                'Cliente', 'Email', 'Telefono',
                 'Metodo envio', 'Comuna', 'Region', 'Direccion',
                 'Subtotal', 'Costo envio', 'Total',
-                'MP Payment ID', 'MP Status', 'Codigo seguimiento', 'Items'])
+                'MP Payment ID', 'MP Status', 'Flow token', 'Codigo seguimiento', 'Items'])
     for p in qs:
         items = '; '.join('{}x{}'.format(it.cantidad, it.nombre_mostrar()) for it in p.items.all())
         w.writerow([
             p.id, p.creado.strftime('%Y-%m-%d %H:%M'), p.get_estado_display(),
+            p.get_estado_pago_display(), p.get_metodo_pago_display(),
+            p.get_medio_pago_detalle_display() if p.medio_pago_detalle else '',
             p.nombre_destinatario, p.email_destinatario or '', p.telefono,
             p.get_metodo_envio_display(), p.comuna, p.region, p.direccion_formateada(),
             int(p.subtotal), int(p.costo_envio), int(p.total),
-            p.mp_payment_id, p.mp_status, p.codigo_seguimiento, items,
+            p.mp_payment_id, p.mp_status, p.flow_token, p.codigo_seguimiento, items,
         ])
     return response
 

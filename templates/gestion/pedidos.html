@@ -26,6 +26,12 @@
     .estado-enviado     { background:#cce5ff; color:#004085; }
     .estado-entregado   { background:#d4edda; color:#155724; }
     .estado-cancelado   { background:#f8d7da; color:#721c24; }
+
+    .pago-pill { display:inline-block; padding:0.18em 0.7em; border-radius:20px; font-size:0.72rem; }
+    .pago-pendiente   { background:#fff3cd; color:#856404; }
+    .pago-pagado      { background:#d4edda; color:#155724; }
+    .pago-rechazado   { background:#f8d7da; color:#721c24; }
+    .pago-reembolsado { background:#e2d9f3; color:#4b3b6b; }
 </style>
 {% endblock %}
 
@@ -67,7 +73,7 @@
         <thead>
             <tr>
                 <th>#</th><th>Fecha</th><th>Cliente</th><th>Envío</th>
-                <th>Estado</th><th class="text-end">Total</th><th></th>
+                <th>Estado</th><th>Pago</th><th class="text-end">Total</th><th></th>
             </tr>
         </thead>
         <tbody>
@@ -84,13 +90,22 @@
                     {% else %}{{ p.comuna|default:"—" }}{% endif %}
                 </td>
                 <td><span class="estado-pill estado-{{ p.estado }}">{{ p.get_estado_display }}</span></td>
+                <td>
+                    <span class="pago-pill pago-{{ p.estado_pago }}">{{ p.get_estado_pago_display }}</span>
+                    {% if p.estado_pago == 'pagado' and p.estado == 'cancelado' %}
+                        <span class="d-block text-danger" style="font-size:0.68rem;">⚠ reembolso pendiente</span>
+                    {% endif %}
+                    <small class="text-muted d-block" style="font-size:0.68rem;">
+                        {{ p.get_metodo_pago_display }}{% if p.medio_pago_detalle %} · {{ p.get_medio_pago_detalle_display }}{% endif %}
+                    </small>
+                </td>
                 <td class="text-end precio">{{ p.total|clp }}</td>
                 <td class="text-end">
                     <a href="{% url 'gestion:detalle_pedido' p.pk %}" class="btn btn-outline-secondary btn-sm">Ver</a>
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="7" class="text-muted fst-italic text-center py-4">No hay pedidos con este filtro.</td></tr>
+            <tr><td colspan="8" class="text-muted fst-italic text-center py-4">No hay pedidos con este filtro.</td></tr>
             {% endfor %}
         </tbody>
     </table>

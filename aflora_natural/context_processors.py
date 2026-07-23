@@ -27,6 +27,9 @@ def banco_info(request):
     return {
         'BANCO': banco,
         'transferencia_disponible': bool(banco.get('titular') and banco.get('numero_cuenta')),
+        # Flow disponible cuando hay llaves configuradas (patrón dormido).
+        'flow_disponible': bool(getattr(settings, 'FLOW_API_KEY', '') and
+                                getattr(settings, 'FLOW_SECRET_KEY', '')),
     }
 
 

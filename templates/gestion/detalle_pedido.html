@@ -23,6 +23,12 @@
     .estado-entregado   { background:#d4edda; color:#155724; }
     .estado-cancelado   { background:#f8d7da; color:#721c24; }
 
+    .pago-pill { display:inline-block; padding:0.2em 0.85em; border-radius:20px; font-size:0.78rem; }
+    .pago-pendiente   { background:#fff3cd; color:#856404; }
+    .pago-pagado      { background:#d4edda; color:#155724; }
+    .pago-rechazado   { background:#f8d7da; color:#721c24; }
+    .pago-reembolsado { background:#e2d9f3; color:#4b3b6b; }
+
     .items-table th { font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); font-weight:400; border-color:var(--rose-light); }
     .items-table td { border-color:var(--rose-light); vertical-align:middle; font-size:0.88rem; }
 </style>
@@ -130,7 +136,26 @@
         <div class="info-card">
             <h6>Pago</h6>
             <div class="info-row"><span class="label">Método</span><span>{{ pedido.get_metodo_pago_display }}</span></div>
-            {% if pedido.metodo_pago == 'mercado_pago' %}
+            <div class="info-row">
+                <span class="label">Estado de pago</span>
+                <span class="pago-pill pago-{{ pedido.estado_pago }}">{{ pedido.get_estado_pago_display }}</span>
+            </div>
+            {% if pedido.medio_pago_detalle %}
+                <div class="info-row"><span class="label">Medio</span><span>{{ pedido.get_medio_pago_detalle_display }}</span></div>
+            {% endif %}
+            {% if pedido.estado_pago == 'pagado' and pedido.estado == 'cancelado' %}
+                <div class="alert alert-danger py-2 px-3 my-2" style="font-size:0.8rem;">
+                    ⚠ Pago recibido pero pedido cancelado (sin stock). <strong>Reembolso pendiente</strong> al cliente.
+                </div>
+            {% endif %}
+            {% if pedido.metodo_pago == 'flow' %}
+                {% if pedido.flow_token %}
+                    <div class="info-row"><span class="label">Flow token</span><span class="small">{{ pedido.flow_token }}</span></div>
+                    {% if pedido.flow_order %}<div class="info-row"><span class="label">Flow order</span><span class="small">{{ pedido.flow_order }}</span></div>{% endif %}
+                {% else %}
+                    <small class="text-muted">Sin info de pago aún.</small>
+                {% endif %}
+            {% elif pedido.metodo_pago == 'mercado_pago' %}
                 {% if pedido.mp_payment_id %}
                     <div class="info-row"><span class="label">Payment ID</span><span class="small">{{ pedido.mp_payment_id }}</span></div>
                     <div class="info-row"><span class="label">Status MP</span><span class="small">{{ pedido.mp_status }}</span></div>

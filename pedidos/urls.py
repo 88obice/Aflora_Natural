@@ -17,4 +17,7 @@ urlpatterns = [
     path('pago/fallido/', views.pago_fallido, name='pago_fallido'),
     path('pago/pendiente/', views.pago_pendiente, name='pago_pendiente'),
     path('webhook/mp/', views.webhook_mp, name='webhook_mp'),
+    # Flow
+    path('pago/flow/retorno/', views.pago_flow_retorno, name='pago_flow_retorno'),
+    path('webhook/flow/', views.webhook_flow, name='webhook_flow'),
 ]

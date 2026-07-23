@@ -227,6 +227,35 @@ def _crear_preferencia_mp(pedido, request):
     return pref.get('init_point') or pref.get('sandbox_init_point')
 
 
+def _crear_pago_flow(pedido, request):
+    """
+    Crea la orden en Flow y devuelve la URL de checkout a la que redirigir.
+    Guarda el token/flowOrder en el pedido para trazabilidad. El commerceOrder
+    lleva el id del pedido + timestamp para que los reintentos no choquen con
+    la unicidad que exige Flow; el id se recupera con .split('-')[0].
+    """
+    import time
+    from . import flow as flow_api
+
+    base_url = request.build_absolute_uri('/')[:-1]
+    commerce_order = '{}-{}'.format(pedido.id, int(time.time()))
+    email = pedido.email_destinatario or 'sin-email@afloranat.com'
+    subject = 'Pedido #{} Aflora Natural'.format(pedido.id)
+
+    resultado = flow_api.crear_pago(
+        commerce_order=commerce_order,
+        subject=subject,
+        amount=int(pedido.total),
+        email=email,
+        url_confirmation='{}/pedidos/webhook/flow/'.format(base_url),
+        url_return='{}/pedidos/pago/flow/retorno/'.format(base_url),
+    )
+    pedido.flow_token = resultado['token']
+    pedido.flow_order = resultado['flow_order']
+    pedido.save(update_fields=['flow_token', 'flow_order', 'actualizado'])
+    return resultado['redirect_url']
+
+
 def _notificar_admin_sin_stock(pedido):
     """
     ALERTA: el pago fue recibido (MP aprobado o transferencia confirmada) pero
@@ -274,7 +303,7 @@ Ver en gestion: /gestion/pedidos/{pid}/
         logger.exception('FALLO al enviar alerta de reembolso del pedido #%s', pedido.pk)
 
 
-def _confirmar_pedido(pedido, mp_payment_id='', mp_status=''):
+def _confirmar_pedido(pedido, mp_payment_id='', mp_status='', medio_pago_detalle=''):
     """
     Confirma el pedido: descuenta stock, marca confirmado, manda emails.
     Idempotente: si ya esta confirmado (o cualquier estado != pendiente),
@@ -283,6 +312,11 @@ def _confirmar_pedido(pedido, mp_payment_id='', mp_status=''):
     Valida el stock de TODOS los items ANTES de descontar, para no dejar
     descuentos parciales si un item falla. Si falta stock, el pedido se
     cancela y se avisa al admin: el pago ya fue recibido y hay que reembolsar.
+
+    En AMBOS caminos el pago YA fue recibido, asi que estado_pago='pagado':
+    - con stock  -> estado='confirmado' + estado_pago='pagado' (todo ok).
+    - sin stock  -> estado='cancelado' + estado_pago='pagado' (plata recibida
+      pero pedido cancelado = REEMBOLSO pendiente; el panel lo muestra claro).
     """
     from catalogo.models import Variante, Producto
     sin_stock = False
@@ -307,6 +341,14 @@ def _confirmar_pedido(pedido, mp_payment_id='', mp_status=''):
             p.mp_payment_id = mp_payment_id
         if mp_status:
             p.mp_status = mp_status
+        # Instrumento real. Si no lo dan y es transferencia, lo inferimos.
+        if medio_pago_detalle:
+            p.medio_pago_detalle = medio_pago_detalle
+        elif not p.medio_pago_detalle and p.metodo_pago == 'transferencia':
+            p.medio_pago_detalle = 'transferencia'
+
+        # El pago fue recibido en ambos caminos.
+        p.estado_pago = 'pagado'
 
         if sin_stock:
             p.estado = 'cancelado'
@@ -386,12 +428,17 @@ def crear_pedido(request):
         costo_envio = calcular_costo_envio(metodo, comuna, region, subtotal)
         total = subtotal + costo_envio
 
-        # Metodo de pago: por defecto MP, transferencia solo si habilitada
-        metodo_pago = request.POST.get('metodo_pago', 'mercado_pago')
-        if metodo_pago not in ('mercado_pago', 'transferencia'):
-            metodo_pago = 'mercado_pago'
+        # Metodo de pago (pasarela). Flow es la principal cuando hay llaves;
+        # MP queda como fallback dormido si Flow no esta configurado.
+        from .flow import flow_configurado
+        gateway_default = 'flow' if flow_configurado() else 'mercado_pago'
+        metodo_pago = request.POST.get('metodo_pago', gateway_default)
+        if metodo_pago not in ('flow', 'mercado_pago', 'transferencia'):
+            metodo_pago = gateway_default
+        if metodo_pago == 'flow' and not flow_configurado():
+            metodo_pago = 'mercado_pago'  # fallback si Flow no configurado
         if metodo_pago == 'transferencia' and not settings.BANCO.get('titular'):
-            metodo_pago = 'mercado_pago'  # fallback si banco no configurado
+            metodo_pago = gateway_default  # fallback si banco no configurado
 
         try:
             with transaction.atomic():
@@ -443,6 +490,20 @@ def crear_pedido(request):
         if metodo_pago == 'transferencia':
             _notificar_admin_transferencia_pendiente(pedido)
             return redirect('pedidos:pago_transferencia', pk=pedido.pk)
+
+        # Flow: crear orden y redirigir al checkout hospedado de Flow (donde el
+        # cliente elige Webpay/MACH/Servipag/transferencia). La confirmacion
+        # real llega por webhook_flow (server-to-server) — no confiamos en la
+        # url de retorno.
+        if metodo_pago == 'flow':
+            try:
+                checkout_url = _crear_pago_flow(pedido, request)
+                if checkout_url:
+                    return redirect(checkout_url)
+            except Exception:
+                logger.exception('Error creando pago Flow para pedido #%s', pedido.pk)
+            messages.warning(request, 'Pedido creado. Hubo un problema al conectar con el sistema de pago. Te contactaremos.')
+            return redirect('pedidos:detalle_pedido', pk=pedido.pk)
 
         # Mercado Pago: crear preferencia y redirigir al checkout MP
         try:
@@ -659,6 +720,24 @@ def _obtener_pago_mp(payment_id):
         return None
 
 
+def _medio_desde_mp(pago):
+    """
+    Deriva nuestro medio_pago_detalle desde el pago de MP.
+    Usa payment_type_id (credit_card/debit_card/bank_transfer/...) y como
+    fallback el nombre generico 'mercado_pago'.
+    """
+    if not pago:
+        return 'mercado_pago'
+    tipo = (pago.get('payment_type_id') or '').lower()
+    mapa = {
+        'credit_card':   'tarjeta_credito',
+        'debit_card':    'tarjeta_debito',
+        'bank_transfer': 'transferencia',
+        'account_money': 'mercado_pago',
+    }
+    return mapa.get(tipo, 'mercado_pago')
+
+
 def pago_exitoso(request):
     """
     Back URL tras un pago que MP considero aprobado. Verificamos contra la API
@@ -672,7 +751,8 @@ def pago_exitoso(request):
     if pago and pago.get('status') == 'approved':
         try:
             pedido = Pedido.objects.get(pk=pago.get('external_reference'))
-            _confirmar_pedido(pedido, mp_payment_id=str(payment_id), mp_status='approved')
+            _confirmar_pedido(pedido, mp_payment_id=str(payment_id), mp_status='approved',
+                              medio_pago_detalle=_medio_desde_mp(pago))
         except (Pedido.DoesNotExist, ValueError, TypeError):
             pedido = None
 
@@ -797,15 +877,115 @@ def webhook_mp(request):
 
     if estado_mp == 'approved':
         logger.info('Webhook MP confirmando pedido #%s (payment %s)', pedido.pk, payment_id)
-        _confirmar_pedido(pedido, mp_payment_id=str(payment_id), mp_status=estado_mp)
+        medio = _medio_desde_mp(pago)
+        _confirmar_pedido(pedido, mp_payment_id=str(payment_id), mp_status=estado_mp,
+                          medio_pago_detalle=medio)
     elif estado_mp in ('rejected', 'cancelled'):
         logger.info('Webhook MP rechazo pedido #%s estado=%s', pedido.pk, estado_mp)
         if pedido.estado == 'pendiente':
             pedido.estado = 'cancelado'
+            pedido.estado_pago = 'rechazado'
             pedido.mp_status = estado_mp
             pedido.mp_payment_id = str(payment_id)
-            pedido.save(update_fields=['estado', 'mp_status', 'mp_payment_id'])
+            pedido.save(update_fields=['estado', 'estado_pago', 'mp_status', 'mp_payment_id'])
     else:
         logger.info('Webhook MP estado no manejado: %s pedido #%s', estado_mp, pedido.pk)
 
     return HttpResponse(status=200)
+
+
+# --- Flow ----------------------------------------------------------------
+#
+# Mismo principio que MP: la fuente de verdad es getStatus (server-to-server),
+# NO la url de retorno que ve el navegador del cliente. El webhook
+# (urlConfirmation) es el que confirma; el retorno solo muestra feedback.
+
+def _procesar_flow_token(token):
+    """
+    Consulta el estado real de una orden Flow por su token y actualiza el
+    pedido en consecuencia. Idempotente (reutiliza _confirmar_pedido, que no
+    hace nada si el pedido ya no esta pendiente). Devuelve el Pedido o None.
+    """
+    from . import flow as flow_api
+    if not token:
+        return None
+    try:
+        data = flow_api.get_status(token)
+    except flow_api.FlowError:
+        logger.exception('Flow: error consultando getStatus (token=%s)', token)
+        return None
+
+    # Recuperar el pedido: primero por el token que guardamos, luego por el
+    # commerceOrder (id-timestamp) como respaldo.
+    pedido = Pedido.objects.filter(flow_token=token).first()
+    if pedido is None:
+        commerce_order = str(data.get('commerceOrder', ''))
+        try:
+            pedido = Pedido.objects.get(pk=int(commerce_order.split('-')[0]))
+        except (ValueError, IndexError, Pedido.DoesNotExist):
+            logger.error('Flow: no se pudo mapear el pago a un pedido (co=%s)', commerce_order)
+            return None
+
+    status = data.get('status')
+    if status == flow_api.STATUS_PAGADO:
+        medio = flow_api.media_a_medio_detalle((data.get('paymentData') or {}).get('media'))
+        logger.info('Flow confirmando pedido #%s (token=%s media=%s)', pedido.pk, token, medio)
+        _confirmar_pedido(pedido, mp_status='flow', medio_pago_detalle=medio)
+    elif status in (flow_api.STATUS_RECHAZADO, flow_api.STATUS_ANULADO):
+        logger.info('Flow rechazo pedido #%s status=%s', pedido.pk, status)
+        if pedido.estado == 'pendiente':
+            pedido.estado = 'cancelado'
+            pedido.estado_pago = 'rechazado'
+            pedido.mp_status = 'flow_{}'.format(status)
+            pedido.save(update_fields=['estado', 'estado_pago', 'mp_status', 'actualizado'])
+    else:
+        logger.info('Flow estado pendiente/desconocido (%s) pedido #%s', status, pedido.pk)
+    return pedido
+
+
+@csrf_exempt
+@require_POST
+def webhook_flow(request):
+    """
+    urlConfirmation de Flow. Flow hace POST con el `token` de la transaccion.
+    Consultamos getStatus (verdad) y actualizamos el pedido. Respondemos 200.
+    """
+    token = request.POST.get('token', '')
+    if not token:
+        return HttpResponse(status=200)
+    logger.info('Webhook Flow recibido (token=%s)', token)
+    _procesar_flow_token(token)
+    return HttpResponse(status=200)
+
+
+@csrf_exempt
+def pago_flow_retorno(request):
+    """
+    urlReturn de Flow: el navegador del cliente vuelve aca tras pagar. Flow
+    manda el `token` por POST. Consultamos el estado real (por UX, para
+    mostrar el resultado correcto) pero la confirmacion canonica es el webhook.
+    csrf_exempt porque el POST viene de Flow, no de un form propio.
+    """
+    token = request.POST.get('token', '') or request.GET.get('token', '')
+    pedido = _procesar_flow_token(token) if token else None
+
+    if pedido and pedido.estado_pago == 'pagado':
+        if request.user.is_authenticated and pedido.usuario == request.user:
+            messages.success(request, 'Pago recibido. Tu pedido esta confirmado.')
+            return redirect('pedidos:detalle_pedido', pk=pedido.pk)
+        return render(request, 'pedidos/pago_resultado.html', {
+            'titulo': 'Pago recibido',
+            'mensaje': 'Tu pago fue confirmado. Te enviamos un email con el detalle.',
+            'tipo': 'exito',
+        })
+    if pedido and pedido.estado_pago == 'rechazado':
+        return render(request, 'pedidos/pago_resultado.html', {
+            'titulo': 'Pago no completado',
+            'mensaje': 'El pago no pudo procesarse. Puedes intentarlo de nuevo o contactarnos por WhatsApp.',
+            'tipo': 'error',
+        })
+    return render(request, 'pedidos/pago_resultado.html', {
+        'titulo': 'Pago en proceso',
+        'mensaje': 'Estamos confirmando tu pago. Te enviaremos un email en cuanto quede listo.',
+        'tipo': 'pendiente',
+    })
