@@ -34,10 +34,43 @@
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#8B5E3C" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
                         Email
                     </h5>
-                    <p class="text-muted small mb-0"><a href="mailto:{{ CONTACTO.email }}">{{ CONTACTO.email }}</a></p>
+                    <button type="button" id="copyEmailBtn" data-email="{{ CONTACTO.email }}"
+                            style="display:inline-flex; align-items:center; gap:0.5rem; background:none; border:1px solid var(--rose-light); border-radius:3px; padding:0.5rem 0.9rem; color:var(--terracotta); font-size:0.95rem; cursor:pointer; transition:0.15s;">
+                        <span id="copyEmailText">{{ CONTACTO.email }}</span>
+                        <svg id="copyEmailIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                    </button>
+                    <div id="copyEmailMsg" class="small mt-2" style="display:none; color:#2e7d62; font-weight:600;">¡Correo copiado!</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        const btn = document.getElementById('copyEmailBtn');
+        if (!btn) return;
+        const msg = document.getElementById('copyEmailMsg');
+        btn.addEventListener('click', function () {
+            const email = btn.dataset.email;
+            const mostrarOk = () => {
+                msg.style.display = 'block';
+                btn.style.borderColor = '#cbe6d8';
+                setTimeout(() => { msg.style.display = 'none'; btn.style.borderColor = ''; }, 2200);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(email).then(mostrarOk).catch(fallback);
+            } else {
+                fallback();
+            }
+            function fallback() {
+                const ta = document.createElement('textarea');
+                ta.value = email; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.select();
+                try { document.execCommand('copy'); mostrarOk(); } catch (e) {}
+                document.body.removeChild(ta);
+            }
+        });
+    })();
+</script>
 {% endblock %}

@@ -386,6 +386,53 @@ def exportar_pedidos_csv(request):
     return response
 
 
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
+def exportar_clientes_csv(request):
+    """Exporta los clientes registrados a CSV (marketing / fidelizacion).
+
+    Las metricas de pedidos (numero, primer/ultimo, total comprado) cuentan solo
+    pedidos PAGADOS (confirmado en adelante); excluye pendientes y cancelados.
+    """
+    from django.contrib.auth.models import User
+    from django.db.models import Q, Min, Max
+
+    PAGADOS = ['confirmado', 'preparando', 'enviado', 'entregado']
+    solo_pagados = Q(pedidos__estado__in=PAGADOS)
+    clientes = (
+        User.objects.filter(is_staff=False)
+        .select_related('perfil')
+        .annotate(
+            n_pedidos=Count('pedidos', filter=solo_pagados),
+            total_comprado=Sum('pedidos__total', filter=solo_pagados),
+            primer_pedido=Min('pedidos__creado', filter=solo_pagados),
+            ultimo_pedido=Max('pedidos__creado', filter=solo_pagados),
+        )
+        .order_by(F('total_comprado').desc(nulls_last=True), 'date_joined')
+    )
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="clientes_aflora.csv"'
+    response.write('﻿')  # BOM para que Excel abra UTF-8 bien
+    w = csv.writer(response)
+    w.writerow(['Email', 'Telefono', 'Nombre', 'Apellidos', 'Registro',
+                'Ultima visita', 'Primer pedido', 'Ultimo pedido',
+                'Numero de pedidos', 'Total comprado'])
+
+    def fecha(dt):
+        return timezone.localtime(dt).strftime('%Y-%m-%d') if dt else ''
+
+    for c in clientes:
+        telefono = c.perfil.telefono if hasattr(c, 'perfil') else ''
+        w.writerow([
+            c.email, telefono, c.first_name, c.last_name,
+            fecha(c.date_joined), fecha(c.last_login),
+            fecha(c.primer_pedido), fecha(c.ultimo_pedido),
+            c.n_pedidos or 0, int(c.total_comprado or 0),
+        ])
+    return response
+
+
 # --- Productos CRUD ------------------------------------------------------
 
 @login_required
