@@ -19,7 +19,6 @@ from pedidos.envios import (
     COSTO_ENVIO_RM_URBANA,
     COSTO_ENVIO_RM_RESTO,
     COSTO_ENVIO_REGIONES,
-    UMBRAL_ENVIO_GRATIS,
 )
 
 
@@ -44,17 +43,6 @@ class CalculoCostoEnvioTests(TestCase):
     def test_envio_otra_region(self):
         c = calcular_costo_envio('envio_domicilio', 'Vina del Mar', 'Region de Valparaiso', 10000)
         self.assertEqual(c, COSTO_ENVIO_REGIONES)
-
-    def test_envio_gratis_sobre_umbral(self):
-        # Subtotal por encima del umbral -> envio gratis (excepto retiro local que ya es gratis)
-        c = calcular_costo_envio('envio_domicilio', 'Las Condes', 'Region Metropolitana',
-                                 UMBRAL_ENVIO_GRATIS + 1)
-        self.assertEqual(c, Decimal('0'))
-
-    def test_envio_gratis_sobre_umbral_otra_region(self):
-        c = calcular_costo_envio('envio_domicilio', 'Vina del Mar', 'Region de Valparaiso',
-                                 UMBRAL_ENVIO_GRATIS + 1)
-        self.assertEqual(c, Decimal('0'))
 
     def test_comuna_desconocida_cae_en_resto_rm(self):
         # Si la comuna no esta en ninguna lista pero region es RM, cae en resto

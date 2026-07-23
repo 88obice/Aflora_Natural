@@ -13,8 +13,6 @@ Esto debe ajustarse cuando la duena confirme tarifas reales con el courier.
 """
 from decimal import Decimal
 
-from django.conf import settings
-
 from .regiones_chile import normalizar
 
 
@@ -43,21 +41,18 @@ COSTO_ENVIO_RM_URBANA = Decimal('3500')
 COSTO_ENVIO_RM_RESTO  = Decimal('4500')
 COSTO_ENVIO_REGIONES  = Decimal('5500')
 
-# Fuente unica: settings.ENVIO_GRATIS_UMBRAL (configurable por env).
-UMBRAL_ENVIO_GRATIS = Decimal(str(settings.ENVIO_GRATIS_UMBRAL))
-
 # Sets normalizados (sin tildes/ñ) para comparar comunas sin importar el acento.
 _URBANAS_RM_NORM = {normalizar(c) for c in COMUNAS_URBANAS_RM}
 
 
-def calcular_costo_envio(metodo, comuna, region, subtotal):
-    """Devuelve Decimal con el costo de envio para los parametros dados."""
+def calcular_costo_envio(metodo, comuna, region, subtotal=None):
+    """Devuelve Decimal con el costo de envio para los parametros dados.
+
+    `subtotal` se mantiene por compatibilidad de firma; hoy no altera el costo
+    (no hay promo de envio gratis por monto).
+    """
     if metodo == 'retiro_local':
         return COSTO_RETIRO_LOCAL
-
-    subtotal = Decimal(subtotal or 0)
-    if subtotal >= UMBRAL_ENVIO_GRATIS:
-        return Decimal('0')
 
     # RM si el nombre de region contiene 'metropolitana' (tolerante a tildes/formato).
     es_rm = 'metropolitana' in normalizar(region)

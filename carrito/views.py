@@ -17,19 +17,12 @@ def get_or_create_carrito(request):
     return carrito
 
 
-UMBRAL_ENVIO_GRATIS = settings.ENVIO_GRATIS_UMBRAL
-
-
 def ver_carrito(request):
     carrito = get_or_create_carrito(request)
     items = carrito.items.select_related('producto', 'variante').all()
-    subtotal = carrito.total()
-    falta_para_gratis = max(0, UMBRAL_ENVIO_GRATIS - subtotal)
     return render(request, 'carrito/carrito.html', {
         'carrito': carrito,
         'items': items,
-        'falta_para_gratis': falta_para_gratis,
-        'umbral_envio_gratis': UMBRAL_ENVIO_GRATIS,
     })
 
 

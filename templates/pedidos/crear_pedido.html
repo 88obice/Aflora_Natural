@@ -70,7 +70,6 @@
                         </div>
                     </div>
                 </div>
-                <small class="text-muted d-block mt-2">Envío gratis sobre {{ umbral_envio_gratis|clp }}.</small>
             </div>
 
             <div class="checkout-section" id="seccionDireccion">
@@ -205,7 +204,6 @@
     const COSTO_RM_URBANA = 3500;
     const COSTO_RM_RESTO = 4500;
     const COSTO_REGIONES = 5500;
-    const UMBRAL_GRATIS = {{ umbral_envio_gratis|floatformat:0 }};
     const SUBTOTAL = {{ subtotal|floatformat:0 }};
     // Comunas urbanas de la RM (normalizadas sin tildes; deben coincidir con envios.py)
     const COMUNAS_URBANAS_RM = [
@@ -236,7 +234,6 @@
     function calcularEnvio() {
         const metodo = document.querySelector('input[name="metodo_envio"]:checked').value;
         if (metodo === 'retiro_local') return 0;
-        if (SUBTOTAL >= UMBRAL_GRATIS) return 0;
         if (!norm(selRegion.value).includes('metropolitana')) return COSTO_REGIONES;
         return COMUNAS_URBANAS_RM.includes(norm(selComuna.value)) ? COSTO_RM_URBANA : COSTO_RM_RESTO;
     }

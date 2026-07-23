@@ -17,13 +17,6 @@
     .cant-form { display:inline-flex; align-items:center; }
     .cant-form input { width:60px; height:32px; text-align:center; border:1px solid var(--rose-light); border-radius:2px; font-size:0.85rem; }
     .cant-form button { background:none; border:none; color:var(--terracotta); cursor:pointer; padding:0 0.4rem; font-size:0.8rem; }
-    .ship-hint { background:#fff; border:1px solid var(--line); border-radius:4px; padding:1rem 1.1rem; }
-    .ship-hint .ship-ic { color:var(--terracotta); flex:none; }
-    .ship-hint .ship-txt { font-size:0.86rem; color:var(--text); }
-    .ship-hint .ship-txt strong { color:var(--terracotta-d); font-weight:700; }
-    .ship-hint--ok { border-color:#cbe6d8; background:#f4faf7; }
-    .ship-hint--ok svg { color:#3a9268; flex:none; }
-    .ship-hint--ok .ship-txt strong { color:#2e7d62; }
 </style>
 {% endblock %}
 
@@ -80,27 +73,6 @@
     </div>
 
     <div class="col-lg-4 mt-4 mt-lg-0">
-        {% if falta_para_gratis > 0 %}
-        <div class="ship-hint mb-3">
-            <div class="d-flex align-items-center gap-2 mb-2">
-                <svg class="ship-ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="7.5" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg>
-                <span class="ship-txt">
-                    Te faltan {{ falta_para_gratis|clp }} para <strong>envío gratis</strong>
-                </span>
-            </div>
-            <div class="progress" style="height:6px; border-radius:3px; background:var(--cream-deep);">
-                <div class="progress-bar" role="progressbar"
-                     style="width:{% widthratio carrito.total umbral_envio_gratis 100 %}%; background:var(--terracotta);">
-                </div>
-            </div>
-        </div>
-        {% else %}
-        <div class="ship-hint ship-hint--ok mb-3 d-flex align-items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-            <span class="ship-txt">Tu pedido tiene <strong>envío gratis</strong></span>
-        </div>
-        {% endif %}
-
         <div class="cart-summary">
             <div class="d-flex justify-content-between align-items-baseline mb-2">
                 <span style="font-size:0.85rem; color:var(--text-muted);">Subtotal</span>
