@@ -394,6 +394,7 @@
                     <p style="font-size:0.8rem; color:rgba(255,255,255,0.6); margin-bottom:0.6rem;">Novedades y aromas nuevos a tu email.</p>
                     <form method="post" action="{% url 'catalogo:suscribir_newsletter' %}" class="d-flex gap-2">
                         {% csrf_token %}
+                        {% include 'partials/honeypot.html' %}
                         <input type="email" name="email" required placeholder="Tu email"
                                style="flex:1; padding:0.5rem 0.7rem; border-radius:2px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); color:#fff; font-size:0.82rem;">
                         <button type="submit"

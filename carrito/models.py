@@ -8,6 +8,9 @@ class Carrito(models.Model):
     sesion_key = models.CharField(max_length=40, null=True, blank=True, db_index=True)
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)
+    # Cuando se envió el email de "carrito abandonado". Null = no enviado.
+    # Evita mandar el recordatorio más de una vez por carrito.
+    recordatorio_enviado = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Carrito de {self.usuario or self.sesion_key}"

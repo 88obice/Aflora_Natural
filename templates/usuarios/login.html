@@ -29,6 +29,7 @@
     <div class="subtitle">Ingresa a tu cuenta para continuar</div>
     <form method="post" novalidate>
         {% csrf_token %}
+        {% include 'partials/honeypot.html' %}
         {% if form.non_field_errors %}
             <div class="alert alert-danger small py-2 mb-3" role="alert">
                 Email o contraseña incorrectos. Verifica los datos e intenta de nuevo.

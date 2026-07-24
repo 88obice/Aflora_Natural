@@ -33,6 +33,15 @@
     .estado-entregado   { background:#d4edda; color:#155724; }
     .estado-cancelado   { background:#f8d7da; color:#721c24; }
 
+    .pago-badge {
+        display: inline-block; padding: 0.25em 0.85em; border-radius: 20px;
+        font-size: 0.78rem; font-weight: 600;
+    }
+    .pago-pendiente   { background:#fff3cd; color:#856404; }
+    .pago-pagado      { background:#d4edda; color:#155724; }
+    .pago-rechazado   { background:#f8d7da; color:#721c24; }
+    .pago-reembolsado { background:#e2d9f3; color:#4b3b6b; }
+
     .items-table td { border-color: var(--rose-light); font-size: 0.9rem; }
 
     .timeline { list-style: none; padding: 0; margin: 0; position: relative; }
@@ -124,8 +133,15 @@
         <div class="panel">
             <h6>Pago</h6>
             <div class="info-row"><span class="label">Método</span><span>{{ pedido.get_metodo_pago_display }}</span></div>
-            {% if pedido.mp_status %}
-                <div class="info-row"><span class="label">Estado MP</span><span>{{ pedido.mp_status }}</span></div>
+            <div class="info-row">
+                <span class="label">Estado</span>
+                <span class="pago-badge pago-{{ pedido.estado_pago }}">{{ pedido.get_estado_pago_display }}</span>
+            </div>
+            {% if pedido.medio_pago_detalle %}
+                <div class="info-row"><span class="label">Medio</span><span>{{ pedido.get_medio_pago_detalle_display }}</span></div>
+            {% endif %}
+            {% if pedido.estado_pago == 'reembolsado' %}
+                <div class="mt-2 small text-muted">Este pago fue reembolsado. Si tienes dudas, escríbenos por WhatsApp.</div>
             {% endif %}
         </div>
 
@@ -149,7 +165,7 @@
                     </tr>
                 {% endfor %}
                 <tr><td class="text-end text-muted">Subtotal</td><td class="text-end">{{ pedido.subtotal|clp }}</td></tr>
-                <tr><td class="text-end text-muted">Envío</td><td class="text-end">{% if pedido.costo_envio %}{{ pedido.costo_envio|clp }}{% else %}Gratis{% endif %}</td></tr>
+                <tr><td class="text-end text-muted">Envío</td><td class="text-end">{% if pedido.metodo_envio == 'retiro_local' %}Retiro en local{% else %}{{ pedido.costo_envio|clp }}{% endif %}</td></tr>
                 <tr><td class="text-end"><strong>Total</strong></td><td class="text-end precio"><strong>{{ pedido.total|clp }}</strong></td></tr>
             </table>
         </div>

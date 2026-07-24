@@ -251,6 +251,25 @@
                 </script>
                 {% endif %}
             {% endif %}
+
+            {% if pedido.estado_pago == 'pagado' %}
+                <hr style="border-color:var(--rose-light); margin:0.8rem 0;">
+                <form method="post" action="{% url 'gestion:marcar_reembolsado' pedido.pk %}"
+                      onsubmit="return confirm('¿Ya devolviste la plata al cliente? Esto marca el pedido como reembolsado. No hace la devolución por vos — solo registra que la hiciste.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm w-100" style="font-size:0.8rem;">
+                        Marcar como reembolsado
+                    </button>
+                </form>
+                <small class="text-muted d-block mt-1" style="font-size:0.72rem;">
+                    Usalo cuando ya devolviste el dinero (por tu banco, Flow o Mercado Pago).
+                </small>
+            {% elif pedido.estado_pago == 'reembolsado' %}
+                <hr style="border-color:var(--rose-light); margin:0.8rem 0;">
+                <small class="text-muted d-block" style="font-size:0.75rem;">
+                    Este pedido fue reembolsado al cliente.
+                </small>
+            {% endif %}
         </div>
     </div>
 </div>

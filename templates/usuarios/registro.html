@@ -30,6 +30,7 @@
     <div class="subtitle">Regístrate para hacer tus pedidos</div>
     <form method="post">
         {% csrf_token %}
+        {% include 'partials/honeypot.html' %}
         {% for field in form %}
             <div class="mb-3">
                 <label class="form-label">{{ field.label }}</label>

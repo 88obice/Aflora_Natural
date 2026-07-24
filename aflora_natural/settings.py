@@ -209,6 +209,17 @@ FLOW_API_KEY    = os.getenv('FLOW_API_KEY', '').strip()
 FLOW_SECRET_KEY = os.getenv('FLOW_SECRET_KEY', '').strip()
 FLOW_API_URL    = os.getenv('FLOW_API_URL', 'https://sandbox.flow.cl/api').strip().rstrip('/')
 
+# ── Cache (usado por el rate limiting anti-spam) ─────────────────────────────
+# LocMemCache: por proceso, en memoria, se limpia al reiniciar. Suficiente para
+# el rate limiting de login/registro/newsletter a esta escala. Si algún día hay
+# varios workers y se necesita un límite compartido, cambiar a Redis acá.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'aflora-locmem',
+    }
+}
+
 # ── Email ───────────────────────────────────────────────────────────────────
 EMAIL_BACKEND       = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 # Proveedor SMTP configurable por env. Por defecto Gmail (SSL 465).

@@ -62,6 +62,14 @@ class Producto(models.Model):
         return self.nombre
 
     def save(self, *args, **kwargs):
+        # Slug anterior en la BD (para detectar si cambia y guardar redirect 301).
+        slug_anterior = None
+        if self.pk:
+            slug_anterior = (Producto.objects
+                             .filter(pk=self.pk)
+                             .values_list('slug', flat=True)
+                             .first())
+
         if not self.slug:
             base = slugify(self.nombre)[:200] or 'producto'
             slug_candidato = base
@@ -76,6 +84,14 @@ class Producto(models.Model):
         if comprimida:
             self.imagen.save(comprimida.name, comprimida, save=False)
         super().save(*args, **kwargs)
+
+        # Si el slug cambió, guardamos el viejo para redirigir (301) los links
+        # antiguos a la URL nueva. Y si el slug nuevo estaba en el historial
+        # (se reusó), lo sacamos para no redirigir a sí mismo.
+        if slug_anterior and slug_anterior != self.slug:
+            SlugHistorico.objects.filter(slug=self.slug).delete()
+            SlugHistorico.objects.update_or_create(
+                slug=slug_anterior, defaults={'producto': self})
 
     def get_absolute_url(self):
         return reverse('catalogo:detalle_producto', kwargs={'slug': self.slug})
@@ -106,6 +122,24 @@ class Producto(models.Model):
     @property
     def total_resenas(self):
         return self.resenas.filter(aprobada=True).count()
+
+
+class SlugHistorico(models.Model):
+    """
+    Slugs viejos de un producto. Cuando el slug de un producto cambia, el
+    anterior se guarda acá para poder redirigir (301) los links antiguos a la
+    URL nueva — así no se rompen enlaces guardados, compartidos ni el SEO.
+    """
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='slugs_historicos')
+    slug = models.SlugField(max_length=220, unique=True, db_index=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Slug histórico'
+        verbose_name_plural = 'Slugs históricos'
+
+    def __str__(self):
+        return f"{self.slug} -> {self.producto.slug}"
 
 
 class ImagenProducto(models.Model):

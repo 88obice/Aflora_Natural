@@ -4,14 +4,15 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, Http404
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .models import (
     Categoria, Producto, Resena, Wishlist,
-    SuscriptorNewsletter, NotificacionStock,
+    SuscriptorNewsletter, NotificacionStock, SlugHistorico,
 )
+from aflora_natural.antispam import honeypot_ok, rate_limited
 
 
 # --- Home -----------------------------------------------------------------
@@ -175,10 +176,20 @@ def _detalle_render(request, producto):
 
 
 def detalle_producto(request, slug):
-    producto = get_object_or_404(
-        Producto.objects.prefetch_related('imagenes', 'variantes'),
-        slug=slug, disponible=True,
-    )
+    try:
+        producto = (Producto.objects
+                    .prefetch_related('imagenes', 'variantes')
+                    .get(slug=slug, disponible=True))
+    except Producto.DoesNotExist:
+        # ¿Es un slug viejo? Redirigimos 301 (permanente) a la URL actual para
+        # no romper links guardados/compartidos ni perder el SEO.
+        hist = (SlugHistorico.objects
+                .select_related('producto')
+                .filter(slug=slug, producto__disponible=True)
+                .first())
+        if hist:
+            return redirect('catalogo:detalle_producto', slug=hist.producto.slug, permanent=True)
+        raise Http404('Producto no encontrado')
     return _detalle_render(request, producto)
 
 
@@ -193,6 +204,12 @@ def detalle_producto_por_id(request, pk):
 @require_POST
 def avisame_stock(request, slug):
     producto = get_object_or_404(Producto, slug=slug)
+    # Anti-spam: honeypot + límite por IP.
+    if not honeypot_ok(request):
+        return redirect('catalogo:detalle_producto', slug=slug)
+    if rate_limited(request, 'avisame', limit=8, window=600):
+        messages.error(request, 'Demasiadas solicitudes. Esperá unos minutos.')
+        return redirect('catalogo:detalle_producto', slug=slug)
     email = request.POST.get('email', '').strip()
     if not email:
         messages.error(request, 'Necesitamos tu email para avisarte.')
@@ -268,7 +285,14 @@ def crear_resena(request, slug):
 # --- Newsletter -----------------------------------------------------------
 
 @require_POST
+@require_POST
 def suscribir_newsletter(request):
+    # Anti-spam: honeypot + límite por IP.
+    if not honeypot_ok(request):
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+    if rate_limited(request, 'newsletter', limit=5, window=600):
+        messages.error(request, 'Demasiadas solicitudes. Esperá unos minutos.')
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     email = request.POST.get('email', '').strip()
     if not email or '@' not in email:
         messages.error(request, 'Email invalido.')

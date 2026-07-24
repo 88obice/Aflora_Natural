@@ -31,11 +31,17 @@ class RegistroForm(_BootstrapMixin, UserCreationForm):
         validators=[solo_letras],
         widget=forms.TextInput(attrs={'placeholder': 'Tu nombre'}),
     )
+    apellido = forms.CharField(
+        label='Apellido',
+        max_length=60,
+        validators=[solo_letras],
+        widget=forms.TextInput(attrs={'placeholder': 'Tu apellido'}),
+    )
     email = forms.EmailField(required=True, label='Correo electrónico')
 
     class Meta:
         model = User
-        fields = ('nombre', 'email', 'password1', 'password2')
+        fields = ('nombre', 'apellido', 'email', 'password1', 'password2')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -45,6 +51,9 @@ class RegistroForm(_BootstrapMixin, UserCreationForm):
 
     def clean_nombre(self):
         return self.cleaned_data['nombre'].strip()
+
+    def clean_apellido(self):
+        return self.cleaned_data['apellido'].strip()
 
     def clean_email(self):
         email = self.cleaned_data['email'].strip().lower()
@@ -58,6 +67,7 @@ class RegistroForm(_BootstrapMixin, UserCreationForm):
         user.username = self.cleaned_data['email']
         user.email = self.cleaned_data['email']
         user.first_name = self.cleaned_data['nombre']
+        user.last_name = self.cleaned_data['apellido']
         if commit:
             user.save()
         return user

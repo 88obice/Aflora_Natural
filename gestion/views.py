@@ -122,12 +122,21 @@ def _bootstrap_fields(form_instance):
 class ProductoForm(forms.ModelForm):
     class Meta:
         model = Producto
-        fields = ['categoria', 'nombre', 'sku', 'descripcion_corta', 'descripcion',
+        fields = ['categoria', 'nombre', 'slug', 'sku', 'descripcion_corta', 'descripcion',
                   'precio', 'stock', 'imagen', 'disponible', 'destacado']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _bootstrap_fields(self)
+        # El slug (URL) es opcional y no se toca al renombrar. Cambialo solo si
+        # de verdad querés cambiar la dirección del producto: los links viejos
+        # seguirán funcionando (redirección automática).
+        self.fields['slug'].required = False
+        self.fields['slug'].help_text = (
+            'La dirección web del producto (ej: vela-vainilla). Si lo dejás '
+            'vacío se genera del nombre. Cambialo solo si de verdad querés otra '
+            'URL — los links viejos seguirán funcionando.'
+        )
 
 
 # --- Formsets de galería y variantes -------------------------------------
@@ -348,6 +357,35 @@ def confirmar_pago_transferencia(request, pk):
         )
     else:
         messages.error(request, 'No se pudo confirmar (estado quedó en "{}"). Revisa stock.'.format(p.get_estado_display()))
+    return redirect('gestion:detalle_pedido', pk=pk)
+
+
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
+def marcar_reembolsado(request, pk):
+    """
+    La dueña marca un pedido pagado como reembolsado (devolvió la plata al
+    cliente manualmente por su banco/Flow/MP). Solo cambia estado_pago; el
+    `estado` de cumplimiento se deja como esté (normalmente 'cancelado').
+    Único camino para llegar a estado_pago='reembolsado'.
+    """
+    if request.method != 'POST':
+        return redirect('gestion:detalle_pedido', pk=pk)
+    pedido = get_object_or_404(Pedido, pk=pk)
+    if pedido.estado_pago != 'pagado':
+        messages.warning(
+            request,
+            'Solo se puede reembolsar un pedido con pago recibido (estado de pago actual: {}).'.format(
+                pedido.get_estado_pago_display())
+        )
+        return redirect('gestion:detalle_pedido', pk=pk)
+    pedido.estado_pago = 'reembolsado'
+    pedido.save(update_fields=['estado_pago', 'actualizado'])
+    logger.info('Pedido #%s marcado como reembolsado por %s', pedido.pk, request.user.username)
+    messages.success(
+        request,
+        'Pedido #{} marcado como reembolsado. Recordá haber hecho la devolución al cliente.'.format(pedido.pk)
+    )
     return redirect('gestion:detalle_pedido', pk=pk)
 
 

@@ -177,6 +177,7 @@
             <div class="stock-badge mb-3">✗ Sin stock disponible</div>
             <form method="post" action="{% url 'catalogo:avisame_stock' producto.slug %}" class="d-flex gap-2 mb-3" style="max-width:420px;">
                 {% csrf_token %}
+                {% include 'partials/honeypot.html' %}
                 <input type="email" name="email" placeholder="Tu email" class="form-control" required
                        value="{% if user.is_authenticated %}{{ user.email }}{% endif %}"
                        style="border-radius:2px; border-color: var(--rose-light);">

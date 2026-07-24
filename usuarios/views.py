@@ -4,10 +4,17 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import RegistroForm, LoginForm, PerfilForm, DireccionForm
 from .models import PerfilUsuario, Direccion
+from aflora_natural.antispam import honeypot_ok, rate_limited
 
 
 def registro(request):
     if request.method == 'POST':
+        # Anti-spam: honeypot + límite de registros por IP.
+        if not honeypot_ok(request):
+            return redirect('catalogo:inicio')  # bot: descartar en silencio
+        if rate_limited(request, 'registro', limit=5, window=600):
+            messages.error(request, 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.')
+            return redirect('usuarios:registro')
         form = RegistroForm(request.POST)
         if form.is_valid():
             user = form.save()
@@ -22,6 +29,10 @@ def registro(request):
 
 def login_view(request):
     if request.method == 'POST':
+        # Rate limit contra fuerza bruta de contraseñas (por IP).
+        if rate_limited(request, 'login', limit=10, window=300):
+            messages.error(request, 'Demasiados intentos de inicio de sesión. Esperá unos minutos.')
+            return redirect('usuarios:login')
         form = LoginForm(data=request.POST)
         if form.is_valid():
             user = form.get_user()
