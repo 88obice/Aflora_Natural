@@ -411,7 +411,7 @@ def exportar_pedidos_csv(request):
     w.writerow(['ID', 'Fecha', 'Estado', 'Estado pago', 'Metodo pago', 'Medio pago',
                 'Cliente', 'Email', 'Telefono',
                 'Metodo envio', 'Comuna', 'Region', 'Direccion',
-                'Subtotal', 'Costo envio', 'Total',
+                'Subtotal', 'Cupon', 'Descuento', 'Costo envio', 'Total',
                 'MP Payment ID', 'MP Status', 'Flow token', 'Codigo seguimiento', 'Items'])
     for p in qs:
         items = '; '.join('{}x{}'.format(it.cantidad, it.nombre_mostrar()) for it in p.items.all())
@@ -421,26 +421,36 @@ def exportar_pedidos_csv(request):
             p.get_medio_pago_detalle_display() if p.medio_pago_detalle else '',
             p.nombre_destinatario, p.email_destinatario or '', p.telefono,
             p.get_metodo_envio_display(), p.comuna, p.region, p.direccion_formateada(),
-            int(p.subtotal), int(p.costo_envio), int(p.total),
+            int(p.subtotal), p.cupon.codigo if p.cupon else '', int(p.descuento),
+            int(p.costo_envio), int(p.total),
             p.mp_payment_id, p.mp_status, p.flow_token, p.codigo_seguimiento, items,
         ])
     return response
 
 
-@login_required
-@user_passes_test(solo_staff, login_url='catalogo:inicio')
-def exportar_clientes_csv(request):
-    """Exporta los clientes registrados a CSV (marketing / fidelizacion).
+def _clientes_filtrados(request):
+    """
+    Devuelve (queryset, filtros_aplicados) de clientes con sus métricas de
+    compra, aplicando los filtros que vengan por GET. Se usa tanto en la vista
+    de lista del panel como en el export CSV, para que el export baje SIEMPRE
+    lo que la dueña está viendo/filtrando en pantalla.
 
-    Las metricas de pedidos (numero, primer/ultimo, total comprado) cuentan solo
-    pedidos PAGADOS (confirmado en adelante); excluye pendientes y cancelados.
+    Métricas (N° pedidos, total comprado, primer/último) cuentan solo pedidos
+    PAGADOS (confirmado en adelante); excluyen pendientes y cancelados.
+
+    Filtros GET soportados:
+      q            texto en email / nombre / apellido
+      min_compras  N° mínimo de pedidos pagados
+      min_gastado  total comprado mínimo (CLP)
+      desde/hasta  rango de fecha de registro (date_joined)
+      orden        total | compras | antiguos | nuevos
     """
     from django.contrib.auth.models import User
     from django.db.models import Q, Min, Max
 
     PAGADOS = ['confirmado', 'preparando', 'enviado', 'entregado']
     solo_pagados = Q(pedidos__estado__in=PAGADOS)
-    clientes = (
+    qs = (
         User.objects.filter(is_staff=False)
         .select_related('perfil')
         .annotate(
@@ -449,8 +459,77 @@ def exportar_clientes_csv(request):
             primer_pedido=Min('pedidos__creado', filter=solo_pagados),
             ultimo_pedido=Max('pedidos__creado', filter=solo_pagados),
         )
-        .order_by(F('total_comprado').desc(nulls_last=True), 'date_joined')
     )
+
+    def _int(nombre):
+        try:
+            return int(request.GET.get(nombre, '').strip())
+        except (TypeError, ValueError):
+            return None
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q))
+    min_compras = _int('min_compras')
+    if min_compras is not None:
+        qs = qs.filter(n_pedidos__gte=min_compras)
+    min_gastado = _int('min_gastado')
+    if min_gastado is not None:
+        qs = qs.filter(total_comprado__gte=min_gastado)
+    desde = request.GET.get('desde', '').strip()
+    if desde:
+        qs = qs.filter(date_joined__date__gte=desde)
+    hasta = request.GET.get('hasta', '').strip()
+    if hasta:
+        qs = qs.filter(date_joined__date__lte=hasta)
+
+    orden = request.GET.get('orden', 'total')
+    orden_map = {
+        'total':    F('total_comprado').desc(nulls_last=True),
+        'compras':  F('n_pedidos').desc(nulls_last=True),
+        'antiguos': F('date_joined').asc(),
+        'nuevos':   F('date_joined').desc(),
+    }
+    qs = qs.order_by(orden_map.get(orden, orden_map['total']), 'date_joined')
+
+    filtros = {
+        'q': q,
+        'min_compras': request.GET.get('min_compras', '').strip(),
+        'min_gastado': request.GET.get('min_gastado', '').strip(),
+        'desde': desde, 'hasta': hasta, 'orden': orden,
+    }
+    return qs, filtros
+
+
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
+def clientes(request):
+    """Lista de clientes con métricas y filtros (segmentación para cupones)."""
+    qs, filtros = _clientes_filtrados(request)
+    paginator = Paginator(qs, 40)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    # Querystring de filtros sin 'page', para conservarlos al paginar/exportar.
+    params = request.GET.copy()
+    params.pop('page', None)
+    return render(request, 'gestion/clientes.html', {
+        'clientes': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'total_clientes': paginator.count,
+        'filtros': filtros,
+        'querystring': params.urlencode(),
+    })
+
+
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
+def exportar_clientes_csv(request):
+    """Exporta los clientes (respetando los filtros activos) a CSV.
+
+    Las metricas de pedidos (numero, primer/ultimo, total comprado) cuentan solo
+    pedidos PAGADOS (confirmado en adelante); excluye pendientes y cancelados.
+    """
+    clientes, _ = _clientes_filtrados(request)
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="clientes_aflora.csv"'
@@ -723,6 +802,27 @@ def newsletter_suscriptores(request):
     return render(request, 'gestion/newsletter_suscriptores.html', {'suscriptores': suscriptores})
 
 
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
+def exportar_suscriptores_csv(request):
+    """Exporta los suscriptores del newsletter a CSV (para campañas o respaldo)."""
+    from catalogo.models import SuscriptorNewsletter
+    qs = SuscriptorNewsletter.objects.order_by('-creado')
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="suscriptores_aflora.csv"'
+    response.write('﻿')  # BOM para que Excel abra UTF-8 bien
+    w = csv.writer(response)
+    w.writerow(['Email', 'Estado', 'Fecha suscripcion'])
+    for s in qs:
+        w.writerow([
+            s.email,
+            'Activo' if s.activo else 'Inactivo',
+            s.creado.strftime('%Y-%m-%d %H:%M'),
+        ])
+    return response
+
+
 # --- Categorias ----------------------------------------------------------
 
 class _CategoriaForm(forms.ModelForm):
@@ -844,3 +944,90 @@ def resena_eliminar(request, pk):
         r.delete()
         messages.success(request, f'Resena #{pk} eliminada.')
     return redirect('gestion:resenas_lista')
+
+
+# --- Cupones -------------------------------------------------------------
+
+class CuponForm(forms.ModelForm):
+    class Meta:
+        from pedidos.models import Cupon
+        model = Cupon
+        fields = ['codigo', 'tipo', 'valor', 'activo', 'vence',
+                  'monto_minimo', 'usos_maximos', 'usos_por_usuario']
+        widgets = {
+            'vence': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, f in self.fields.items():
+            if name == 'activo':
+                f.widget.attrs['class'] = 'form-check-input'
+            else:
+                existing = f.widget.attrs.get('class', '')
+                f.widget.attrs['class'] = (existing + ' form-control').strip()
+
+    def clean_codigo(self):
+        codigo = (self.cleaned_data['codigo'] or '').strip().upper()
+        if not codigo:
+            raise forms.ValidationError('El código no puede estar vacío.')
+        # Unicidad case-insensitive (el modelo lo guarda en mayúsculas).
+        from pedidos.models import Cupon
+        qs = Cupon.objects.filter(codigo=codigo)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError('Ya existe un cupón con ese código.')
+        return codigo
+
+
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
+def cupones(request):
+    from pedidos.models import Cupon
+    return render(request, 'gestion/cupones.html', {
+        'cupones': Cupon.objects.all(),
+    })
+
+
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
+def cupon_crear(request):
+    if request.method == 'POST':
+        form = CuponForm(request.POST)
+        if form.is_valid():
+            cupon = form.save()
+            messages.success(request, f'Cupón {cupon.codigo} creado.')
+            return redirect('gestion:cupones')
+    else:
+        form = CuponForm()
+    return render(request, 'gestion/cupon_form.html', {'form': form, 'modo': 'crear'})
+
+
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
+def cupon_editar(request, pk):
+    from pedidos.models import Cupon
+    cupon = get_object_or_404(Cupon, pk=pk)
+    if request.method == 'POST':
+        form = CuponForm(request.POST, instance=cupon)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Cupón {cupon.codigo} actualizado.')
+            return redirect('gestion:cupones')
+    else:
+        form = CuponForm(instance=cupon)
+    return render(request, 'gestion/cupon_form.html', {'form': form, 'modo': 'editar', 'cupon': cupon})
+
+
+@login_required
+@user_passes_test(solo_staff, login_url='catalogo:inicio')
+def cupon_toggle(request, pk):
+    from pedidos.models import Cupon
+    cupon = get_object_or_404(Cupon, pk=pk)
+    if request.method == 'POST':
+        cupon.activo = not cupon.activo
+        cupon.save(update_fields=['activo', 'actualizado'])
+        estado = 'activado' if cupon.activo else 'desactivado'
+        messages.success(request, f'Cupón {cupon.codigo} {estado}.')
+    return redirect('gestion:cupones')

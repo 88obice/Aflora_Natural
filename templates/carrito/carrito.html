@@ -76,8 +76,36 @@
         <div class="cart-summary">
             <div class="d-flex justify-content-between align-items-baseline mb-2">
                 <span style="font-size:0.85rem; color:var(--text-muted);">Subtotal</span>
-                <span class="precio">{{ carrito.total|clp }}</span>
+                <span class="precio">{{ subtotal|clp }}</span>
             </div>
+
+            {# --- Cupón --- #}
+            {% if cupon %}
+                <div class="d-flex justify-content-between align-items-baseline mb-2" style="color:#2e7d32;">
+                    <span style="font-size:0.85rem;">
+                        Cupón <strong>{{ cupon.codigo }}</strong>
+                        <form method="post" action="{% url 'carrito:quitar_cupon' %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link btn-sm p-0 align-baseline" style="font-size:0.72rem; color:var(--text-muted);">(quitar)</button>
+                        </form>
+                    </span>
+                    <span class="precio">− {{ descuento|clp }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-baseline mb-2">
+                    <span style="font-size:0.9rem;"><strong>Subtotal con descuento</strong></span>
+                    <span class="precio"><strong>{{ total_con_descuento|clp }}</strong></span>
+                </div>
+            {% else %}
+                <form method="post" action="{% url 'carrito:aplicar_cupon' %}" class="mb-2">
+                    {% csrf_token %}
+                    <label class="form-label mb-1" style="font-size:0.8rem; color:var(--text-muted);">¿Tenés un cupón?</label>
+                    <div class="d-flex gap-2">
+                        <input type="text" name="codigo" class="form-control form-control-sm" placeholder="Código" style="border-color:var(--rose-light); text-transform:uppercase;">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Aplicar</button>
+                    </div>
+                </form>
+            {% endif %}
+
             <small class="text-muted d-block mb-3">Costo de envío se calcula en el siguiente paso</small>
             <hr style="border-color: var(--rose-light);">
             <a href="{% url 'pedidos:crear_pedido' %}" class="btn btn-primary w-100">Continuar al checkout</a>

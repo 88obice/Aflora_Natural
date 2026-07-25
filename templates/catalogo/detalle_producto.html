@@ -85,10 +85,10 @@
         {% if producto.imagen or imagenes_galeria %}
         <div class="gallery-thumbs">
             {% if producto.imagen %}
-                <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="gallery-thumb active" data-full="{{ producto.imagen.url }}">
+                <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" class="gallery-thumb active" data-full="{{ producto.imagen.url }}" loading="lazy">
             {% endif %}
             {% for img in imagenes_galeria %}
-                <img src="{{ img.imagen.url }}" alt="{{ img.alt|default:producto.nombre }}" class="gallery-thumb" data-full="{{ img.imagen.url }}">
+                <img src="{{ img.imagen.url }}" alt="{{ img.alt|default:producto.nombre }}" class="gallery-thumb" data-full="{{ img.imagen.url }}" loading="lazy">
             {% endfor %}
         </div>
         {% endif %}
@@ -257,7 +257,7 @@
         <div class="col">
             <div class="card h-100 product-card shadow-sm">
                 {% if p.imagen %}
-                    <img src="{{ p.imagen.url }}" class="card-img-top" alt="{{ p.nombre }}">
+                    <img src="{{ p.imagen.url }}" class="card-img-top" alt="{{ p.nombre }}" loading="lazy">
                 {% else %}
                     <div class="placeholder-img">🌿</div>
                 {% endif %}

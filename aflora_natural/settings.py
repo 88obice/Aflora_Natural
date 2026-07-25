@@ -356,7 +356,11 @@ if SENTRY_DSN and not DEBUG:
         sentry_sdk.init(
             dsn=SENTRY_DSN,
             integrations=[DjangoIntegration()],
-            traces_sample_rate=0.1,        # 10% de requests con trazas (perf)
+            # Modo "solo errores": no muestreamos trazas de performance para no
+            # gastar la cuota gratis. Los errores (500, excepciones y todo lo que
+            # se loguee con logger.error/exception) igual llegan a Sentry.
+            # Subilo (ej. 0.1) si algún día querés medir páginas lentas.
+            traces_sample_rate=float(os.getenv('SENTRY_TRACES_RATE', '0')),
             send_default_pii=False,         # nunca enviar datos personales del cliente
             environment=os.getenv('ENVIRONMENT', 'production'),
         )

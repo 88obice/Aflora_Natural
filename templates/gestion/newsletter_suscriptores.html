@@ -3,7 +3,12 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Suscriptores del newsletter</h2>
-    <a href="{% url 'gestion:newsletter_lista' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+    <div class="d-flex gap-2">
+        {% if suscriptores %}
+        <a href="{% url 'gestion:exportar_suscriptores' %}" class="btn btn-primary btn-sm">Exportar CSV</a>
+        {% endif %}
+        <a href="{% url 'gestion:newsletter_lista' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+    </div>
 </div>
 <div class="table-responsive">
     <table class="table" style="background:#fff; border:1px solid var(--rose-light);">

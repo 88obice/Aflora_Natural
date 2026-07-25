@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django.db import models
+from django.core.validators import MinValueValidator
 from django.contrib.auth.models import User
 from catalogo.models import Producto, Variante
 
@@ -76,6 +79,10 @@ class Pedido(models.Model):
     # Costos
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     costo_envio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # Cupón aplicado (opcional) y el descuento en pesos que significó.
+    # total = subtotal + costo_envio - descuento
+    cupon = models.ForeignKey('Cupon', on_delete=models.SET_NULL, null=True, blank=True, related_name='pedidos')
+    descuento = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total = models.DecimalField(max_digits=10, decimal_places=2)
 
     # Tracking
@@ -189,3 +196,87 @@ class ItemPedido(models.Model):
         if self.variante:
             return f"{nombre} ({self.variante.nombre})"
         return nombre
+
+
+class Cupon(models.Model):
+    """
+    Cupón de descuento. Reglas: tipo (% o monto fijo), vencimiento opcional,
+    monto mínimo de compra, tope total de usos y tope por persona.
+    El descuento se aplica sobre el SUBTOTAL (productos), no sobre el envío.
+    """
+    TIPO_CHOICES = [
+        ('porcentaje', 'Porcentaje (%)'),
+        ('monto_fijo', 'Monto fijo ($)'),
+    ]
+    codigo = models.CharField(max_length=40, unique=True, db_index=True,
+                              help_text="El código que escribe el cliente (ej: GRACIAS15). Se guarda en mayúsculas.")
+    tipo = models.CharField(max_length=12, choices=TIPO_CHOICES, default='porcentaje')
+    valor = models.DecimalField(max_digits=10, decimal_places=2,
+                                validators=[MinValueValidator(Decimal('0'))],
+                                help_text="Si es porcentaje: 15 = 15%. Si es monto fijo: 5000 = $5.000.")
+    activo = models.BooleanField(default=True)
+    vence = models.DateField(null=True, blank=True, help_text="Opcional. Último día en que sirve (incluido).")
+    monto_minimo = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                       help_text="Compra mínima (subtotal) para poder usarlo. 0 = sin mínimo.")
+    usos_maximos = models.PositiveIntegerField(null=True, blank=True,
+                                               help_text="Tope total de usos entre todos los clientes. Vacío = ilimitado.")
+    usos_por_usuario = models.PositiveIntegerField(default=1,
+                                                   help_text="Cuántas veces puede usarlo la misma persona (por email).")
+    usos_actuales = models.PositiveIntegerField(default=0)
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Cupón'
+        verbose_name_plural = 'Cupones'
+        ordering = ['-creado']
+
+    def __str__(self):
+        return self.codigo
+
+    def save(self, *args, **kwargs):
+        # Normalizamos el código: sin espacios y en mayúsculas.
+        self.codigo = (self.codigo or '').strip().upper()
+        super().save(*args, **kwargs)
+
+    def calcular_descuento(self, subtotal):
+        """Descuento en pesos (entero CLP) para un subtotal dado. Nunca mayor al subtotal."""
+        subtotal = Decimal(subtotal)
+        if self.tipo == 'porcentaje':
+            desc = subtotal * self.valor / Decimal('100')
+        else:
+            desc = self.valor
+        desc = max(Decimal('0'), min(desc, subtotal))
+        return desc.quantize(Decimal('1'))  # CLP no usa decimales
+
+    def validar(self, subtotal, email=''):
+        """
+        Devuelve (ok, mensaje). Chequea activo, vencimiento, tope total, monto
+        mínimo y tope por persona (por email). mensaje='' si todo ok.
+        """
+        from django.utils import timezone
+        if not self.activo:
+            return False, 'Este cupón no está disponible.'
+        if self.vence and timezone.localdate() > self.vence:
+            return False, 'Este cupón está vencido.'
+        if self.usos_maximos is not None and self.usos_actuales >= self.usos_maximos:
+            return False, 'Este cupón ya alcanzó su límite de usos.'
+        if Decimal(subtotal) < self.monto_minimo:
+            return False, 'Tu compra debe llegar a ${:,.0f} para usar este cupón.'.format(
+                self.monto_minimo).replace(',', '.')
+        if email and self.usos_por_usuario:
+            usados = UsoCupon.objects.filter(cupon=self, email__iexact=email.strip()).count()
+            if usados >= self.usos_por_usuario:
+                return False, 'Ya usaste este cupón.'
+        return True, ''
+
+
+class UsoCupon(models.Model):
+    """Registro de cada uso de un cupón, para controlar el tope por persona."""
+    cupon = models.ForeignKey(Cupon, on_delete=models.CASCADE, related_name='usos')
+    email = models.EmailField(db_index=True)
+    pedido = models.ForeignKey(Pedido, on_delete=models.SET_NULL, null=True, blank=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.cupon.codigo} · {self.email}"

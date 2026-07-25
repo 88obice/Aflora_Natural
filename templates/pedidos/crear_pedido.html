@@ -190,6 +190,12 @@
                     <span>Subtotal</span>
                     <span id="subtotalMostrar">{{ subtotal|clp }}</span>
                 </div>
+                {% if cupon %}
+                <div class="summary-row" style="color:#2e7d32;">
+                    <span>Cupón {{ cupon.codigo }}</span>
+                    <span>− {{ descuento|clp }}</span>
+                </div>
+                {% endif %}
                 <div class="summary-row">
                     <span>Envío</span>
                     <span id="envioMostrar" class="text-muted">Calculando...</span>
@@ -219,6 +225,7 @@
     const COSTO_RM_RESTO = 4500;
     const COSTO_REGIONES = 5500;
     const SUBTOTAL = {{ subtotal|floatformat:0 }};
+    const DESCUENTO = {{ descuento|default:0|floatformat:0 }};
     // Comunas urbanas de la RM (normalizadas sin tildes; deben coincidir con envios.py)
     const COMUNAS_URBANAS_RM = [
         'santiago','providencia','las condes','vitacura','lo barnechea','nunoa','macul','la reina','la florida',
@@ -257,7 +264,7 @@
         const el = document.getElementById('envioMostrar');
         el.textContent = envio === 0 ? 'Gratis' : formatoCLP(envio);
         el.classList.toggle('text-muted', envio === 0);
-        document.getElementById('totalMostrar').textContent = formatoCLP(SUBTOTAL + envio);
+        document.getElementById('totalMostrar').textContent = formatoCLP(SUBTOTAL - DESCUENTO + envio);
     }
 
     // Init: preseleccionar región y poblar comunas

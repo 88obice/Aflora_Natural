@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% load aflora_filters %}
+
+{% block title %}Cupones — Gestión{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cupones-table { font-size:0.88rem; }
+    .cupones-table th { font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); font-weight:400; border-color:var(--rose-light); }
+    .cupones-table td { border-color:var(--rose-light); vertical-align:middle; }
+    .badge-activo   { background:#d4edda; color:#155724; padding:0.2em 0.7em; border-radius:20px; font-size:0.72rem; }
+    .badge-inactivo { background:#f8d7da; color:#721c24; padding:0.2em 0.7em; border-radius:20px; font-size:0.72rem; }
+    .codigo-cupon { font-family:monospace; font-weight:700; letter-spacing:0.05em; color:var(--terracotta); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Cupones de descuento</h2>
+    <div class="d-flex gap-2">
+        <a href="{% url 'gestion:cupon_crear' %}" class="btn btn-primary btn-sm">+ Nuevo cupón</a>
+        <a href="{% url 'gestion:dashboard' %}" class="btn btn-outline-secondary btn-sm">← Panel</a>
+    </div>
+</div>
+
+<p class="text-muted small mb-3">
+    Creá códigos de descuento y compartilos con tus clientes (por email o WhatsApp).
+    Usá la página de <a href="{% url 'gestion:clientes' %}">Clientes</a> para elegir a quiénes dárselos.
+</p>
+
+<div class="table-responsive">
+    <table class="table cupones-table">
+        <thead>
+            <tr>
+                <th>Código</th><th>Descuento</th><th>Mínimo</th><th>Vence</th>
+                <th class="text-end">Usos</th><th>Estado</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in cupones %}
+            <tr>
+                <td><span class="codigo-cupon">{{ c.codigo }}</span></td>
+                <td>{% if c.tipo == 'porcentaje' %}{{ c.valor|floatformat:0 }}%{% else %}{{ c.valor|clp }}{% endif %}</td>
+                <td class="text-muted">{% if c.monto_minimo %}{{ c.monto_minimo|clp }}{% else %}—{% endif %}</td>
+                <td class="text-muted">{% if c.vence %}{{ c.vence|date:"d M Y" }}{% else %}Sin vencimiento{% endif %}</td>
+                <td class="text-end text-muted">
+                    {{ c.usos_actuales }}{% if c.usos_maximos %} / {{ c.usos_maximos }}{% endif %}
+                </td>
+                <td>
+                    {% if c.activo %}<span class="badge-activo">Activo</span>
+                    {% else %}<span class="badge-inactivo">Inactivo</span>{% endif %}
+                </td>
+                <td class="text-end">
+                    <a href="{% url 'gestion:cupon_editar' c.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a>
+                    <form method="post" action="{% url 'gestion:cupon_toggle' c.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                            {% if c.activo %}Desactivar{% else %}Activar{% endif %}
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-muted fst-italic text-center py-4">Todavía no creaste cupones.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

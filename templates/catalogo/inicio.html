@@ -176,7 +176,7 @@
                 <div class="ph">
                     {% if producto.categoria %}<span class="cat-tag">{{ producto.categoria }}</span>{% endif %}
                     {% if producto.imagen %}
-                        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}">
+                        <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" loading="lazy">
                     {% else %}
                         <div class="placeholder-img">
                             <svg width="80" height="100" viewBox="0 0 80 100" fill="none"><rect x="24" y="42" width="32" height="50" rx="6" fill="#fff" stroke="#C9A99A" stroke-width="1.5"/><path d="M40 42c6-8 6-17 0-23-6 6-6 15 0 23z" fill="#F0C27B"/><path d="M40 20v-5" stroke="#6B4528" stroke-width="1.8" stroke-linecap="round"/></svg>

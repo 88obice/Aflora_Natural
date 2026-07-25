@@ -99,6 +99,9 @@
                 </tr>
                 {% endfor %}
                 <tr><td class="text-end text-muted">Subtotal</td><td class="text-end">{{ pedido.subtotal|clp }}</td></tr>
+                {% if pedido.descuento %}
+                <tr><td class="text-end" style="color:#2e7d32;">Cupón {{ pedido.cupon.codigo }}</td><td class="text-end" style="color:#2e7d32;">− {{ pedido.descuento|clp }}</td></tr>
+                {% endif %}
                 <tr><td class="text-end text-muted">Envío</td><td class="text-end">{% if pedido.metodo_envio == 'retiro_local' %}Retiro en local{% else %}{{ pedido.costo_envio|clp }}{% endif %}</td></tr>
                 <tr><td class="text-end"><strong>Total</strong></td><td class="text-end precio"><strong>{{ pedido.total|clp }}</strong></td></tr>
             </table>

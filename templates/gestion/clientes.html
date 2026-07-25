@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load aflora_filters %}
+
+{% block title %}Clientes — Gestión{% endblock %}
+
+{% block extra_css %}
+<style>
+    .clientes-table { font-size:0.88rem; }
+    .clientes-table th { font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); font-weight:400; border-color:var(--rose-light); }
+    .clientes-table td { border-color:var(--rose-light); vertical-align:middle; }
+    .filtros-box { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1rem 1.2rem; margin-bottom:1.5rem; }
+    .filtros-box label { font-size:0.72rem; letter-spacing:0.04em; text-transform:uppercase; color:var(--text-muted); }
+    .filtros-box .form-control, .filtros-box .form-select { border-color:var(--rose-light); font-size:0.88rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Clientes</h2>
+    <div class="d-flex gap-2">
+        <a href="{% url 'gestion:exportar_clientes' %}{% if querystring %}?{{ querystring }}{% endif %}" class="btn btn-primary btn-sm">Exportar CSV</a>
+        <a href="{% url 'gestion:dashboard' %}" class="btn btn-outline-secondary btn-sm">← Panel</a>
+    </div>
+</div>
+
+<p class="text-muted small mb-3">
+    Segmentá a tus clientes para darles cupones: buscá por antigüedad, número de compras o total gastado.
+    El botón "Exportar CSV" baja exactamente lo que estás viendo con estos filtros.
+</p>
+
+<form method="get" class="filtros-box">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label>Buscar (email o nombre)</label>
+            <input type="text" name="q" value="{{ filtros.q }}" class="form-control form-control-sm" placeholder="ej: ana o @gmail">
+        </div>
+        <div class="col-md-2">
+            <label>Mín. compras</label>
+            <input type="number" name="min_compras" min="0" value="{{ filtros.min_compras }}" class="form-control form-control-sm" placeholder="ej: 3">
+        </div>
+        <div class="col-md-2">
+            <label>Mín. gastado ($)</label>
+            <input type="number" name="min_gastado" min="0" value="{{ filtros.min_gastado }}" class="form-control form-control-sm" placeholder="ej: 50000">
+        </div>
+        <div class="col-md-2">
+            <label>Registrado desde</label>
+            <input type="date" name="desde" value="{{ filtros.desde }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+            <label>Hasta</label>
+            <input type="date" name="hasta" value="{{ filtros.hasta }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-1">
+            <label>Orden</label>
+            <select name="orden" class="form-select form-select-sm">
+                <option value="total"    {% if filtros.orden == 'total' %}selected{% endif %}>Más gastó</option>
+                <option value="compras"  {% if filtros.orden == 'compras' %}selected{% endif %}>Más compras</option>
+                <option value="antiguos" {% if filtros.orden == 'antiguos' %}selected{% endif %}>Más antiguos</option>
+                <option value="nuevos"   {% if filtros.orden == 'nuevos' %}selected{% endif %}>Más nuevos</option>
+            </select>
+        </div>
+    </div>
+    <div class="mt-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+        <a href="{% url 'gestion:clientes' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table clientes-table">
+        <thead>
+            <tr>
+                <th>Cliente</th><th>Registrado</th>
+                <th class="text-end">Compras</th><th class="text-end">Total gastado</th>
+                <th>Último pedido</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in clientes %}
+            <tr>
+                <td>
+                    {{ c.first_name }} {{ c.last_name }}
+                    <small class="text-muted d-block">{{ c.email }}</small>
+                </td>
+                <td class="text-muted small">{{ c.date_joined|date:"d M Y" }}</td>
+                <td class="text-end">{{ c.n_pedidos|default:0 }}</td>
+                <td class="text-end precio">{{ c.total_comprado|default:0|clp }}</td>
+                <td class="text-muted small">{% if c.ultimo_pedido %}{{ c.ultimo_pedido|date:"d M Y" }}{% else %}—{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted fst-italic text-center py-4">No hay clientes con estos filtros.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if is_paginated %}
+<nav class="d-flex justify-content-between align-items-center mt-3">
+    <small class="text-muted">
+        Mostrando {{ clientes|length }} de {{ total_clientes }} cliente{{ total_clientes|pluralize }}
+        · página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+    </small>
+    <div class="d-flex gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}" class="btn btn-outline-secondary btn-sm">← Anterior</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}" class="btn btn-outline-secondary btn-sm">Siguiente →</a>
+        {% endif %}
+    </div>
+</nav>
+{% endif %}
+{% endblock %}

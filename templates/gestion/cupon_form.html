@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if modo == 'crear' %}Nuevo cupón{% else %}Editar cupón{% endif %} — Gestión{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-panel { max-width:640px; background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1.8rem; }
+    .form-panel label { font-size:0.8rem; color:var(--text-muted); letter-spacing:0.03em; }
+    .form-panel .form-control, .form-panel .form-select { border-color:var(--rose-light); font-size:0.9rem; }
+    .help { font-size:0.74rem; color:var(--text-muted); margin-top:0.15rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>{% if modo == 'crear' %}Nuevo cupón{% else %}Editar cupón{% endif %}</h2>
+    <a href="{% url 'gestion:cupones' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+</div>
+
+<form method="post" class="form-panel">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger small">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label>Código</label>
+            {{ form.codigo }}
+            <div class="help">Lo que escribe el cliente. Se guarda en MAYÚSCULAS.</div>
+            {% if form.codigo.errors %}<div class="text-danger small">{{ form.codigo.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-3">
+            <label>Tipo</label>
+            {{ form.tipo }}
+        </div>
+        <div class="col-md-3">
+            <label>Valor</label>
+            {{ form.valor }}
+            <div class="help">15 = 15% o $ fijo.</div>
+            {% if form.valor.errors %}<div class="text-danger small">{{ form.valor.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <label>Compra mínima ($)</label>
+            {{ form.monto_minimo }}
+            <div class="help">0 = sin mínimo.</div>
+        </div>
+        <div class="col-md-4">
+            <label>Vence</label>
+            {{ form.vence }}
+            <div class="help">Opcional.</div>
+        </div>
+        <div class="col-md-4">
+            <label>Usos máximos (total)</label>
+            {{ form.usos_maximos }}
+            <div class="help">Vacío = ilimitado.</div>
+        </div>
+
+        <div class="col-md-4">
+            <label>Usos por persona</label>
+            {{ form.usos_por_usuario }}
+            <div class="help">Por email.</div>
+        </div>
+        <div class="col-md-8 d-flex align-items-end">
+            <div class="form-check">
+                {{ form.activo }}
+                <label class="form-check-label ms-2" style="text-transform:none;">Activo (disponible para usar)</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">{% if modo == 'crear' %}Crear cupón{% else %}Guardar cambios{% endif %}</button>
+        <a href="{% url 'gestion:cupones' %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

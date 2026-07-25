@@ -44,7 +44,7 @@ Tu pedido #{pid} fue confirmado.
 
 {items}
 
-Subtotal: ${sub:,}
+Subtotal: ${sub:,}{descuento_linea}
 Envio:    ${env:,}
 Total:    ${tot:,}
 
@@ -62,6 +62,10 @@ Si tienes dudas: WhatsApp +56 9 8956 0937
         pid=pedido.pk,
         items=items_texto,
         sub=int(pedido.subtotal),
+        descuento_linea=(
+            '\nDescuento ({}): -${:,}'.format(pedido.cupon.codigo, int(pedido.descuento))
+            if pedido.descuento else ''
+        ),
         env=int(pedido.costo_envio),
         tot=int(pedido.total),
         dir=direccion,
@@ -426,7 +430,11 @@ def crear_pedido(request):
 
         subtotal = sum(i.subtotal() for i in items)
         costo_envio = calcular_costo_envio(metodo, comuna, region, subtotal)
-        total = subtotal + costo_envio
+        # Cupón: revalidamos contra el subtotal y el email reales (ahora sí
+        # tenemos el email del invitado). Si ya no aplica, descuento=0 y seguimos.
+        from .cupones import cupon_aplicado, limpiar_cupon
+        cupon_obj, descuento, _cupon_err = cupon_aplicado(request, subtotal, email)
+        total = subtotal + costo_envio - descuento
 
         # Metodo de pago (pasarela). Flow es la principal cuando hay llaves;
         # MP queda como fallback dormido si Flow no esta configurado.
@@ -454,6 +462,8 @@ def crear_pedido(request):
                     nota_cliente=request.POST.get('nota', '').strip()[:500],
                     subtotal=subtotal,
                     costo_envio=costo_envio,
+                    cupon=cupon_obj,
+                    descuento=descuento,
                     total=total,
                 )
                 for item in items:
@@ -470,13 +480,22 @@ def crear_pedido(request):
                     )
                 # Vaciar el carrito
                 carrito.items.all().delete()
+                # Registrar el uso del cupón (contador + registro por email).
+                if cupon_obj and descuento > 0:
+                    from django.db.models import F
+                    from .models import Cupon, UsoCupon
+                    Cupon.objects.filter(pk=cupon_obj.pk).update(usos_actuales=F('usos_actuales') + 1)
+                    UsoCupon.objects.create(cupon=cupon_obj, email=email, pedido=pedido)
         except Exception as e:
             logger.exception('Error al crear pedido para %s', email)
             messages.error(request, 'Error al crear el pedido: {}'.format(str(e)[:120]))
             return redirect('carrito:ver_carrito')
 
-        logger.info('Pedido #%s creado (subtotal=%s envio=%s total=%s metodo_pago=%s)',
-                    pedido.pk, subtotal, costo_envio, total, metodo_pago)
+        logger.info('Pedido #%s creado (subtotal=%s envio=%s descuento=%s total=%s metodo_pago=%s cupon=%s)',
+                    pedido.pk, subtotal, costo_envio, descuento, total, metodo_pago,
+                    cupon_obj.codigo if cupon_obj else '-')
+        # El cupón ya quedó consumido en este pedido: lo sacamos de la sesión.
+        limpiar_cupon(request)
 
         # Si es invitado, guardar el pedido en la sesion para que pueda
         # verlo durante esta sesion del navegador sin login.
@@ -524,11 +543,16 @@ def crear_pedido(request):
         direccion_predet = request.user.direcciones.filter(es_predeterminada=True).first()
 
     subtotal_actual = sum(i.subtotal() for i in items)
+    from .cupones import cupon_aplicado, email_para_cupon
+    cupon_obj, descuento, _cupon_err = cupon_aplicado(
+        request, subtotal_actual, email_para_cupon(request))
 
     return render(request, 'pedidos/crear_pedido.html', {
         'carrito': carrito,
         'items': items,
         'subtotal': subtotal_actual,
+        'cupon': cupon_obj,
+        'descuento': descuento,
         'comunas': comunas_disponibles(),
         'perfil': perfil,
         'direccion_predet': direccion_predet,

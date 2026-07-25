@@ -20,10 +20,58 @@ def get_or_create_carrito(request):
 def ver_carrito(request):
     carrito = get_or_create_carrito(request)
     items = carrito.items.select_related('producto', 'variante').all()
+
+    from pedidos.cupones import cupon_aplicado, email_para_cupon, limpiar_cupon
+    subtotal = carrito.total()
+    cupon, descuento, error = cupon_aplicado(request, subtotal, email_para_cupon(request))
+    # Si había un cupón en sesión que ya no aplica, lo sacamos y avisamos.
+    if error:
+        limpiar_cupon(request)
+        messages.warning(request, error)
+
     return render(request, 'carrito/carrito.html', {
         'carrito': carrito,
         'items': items,
+        'subtotal': subtotal,
+        'cupon': cupon,
+        'descuento': descuento,
+        'total_con_descuento': subtotal - descuento,
     })
+
+
+@require_POST
+def aplicar_cupon(request):
+    from pedidos.cupones import obtener_cupon, email_para_cupon, SESSION_KEY
+    codigo = request.POST.get('codigo', '').strip()
+    if not codigo:
+        messages.error(request, 'Escribí un código de cupón.')
+        return redirect('carrito:ver_carrito')
+    carrito = get_or_create_carrito(request)
+    subtotal = carrito.total()
+    if subtotal <= 0:
+        messages.error(request, 'Tu carrito está vacío.')
+        return redirect('carrito:ver_carrito')
+    cupon = obtener_cupon(codigo)
+    if not cupon:
+        messages.error(request, 'Ese código no existe o no es válido.')
+        return redirect('carrito:ver_carrito')
+    ok, msg = cupon.validar(subtotal, email_para_cupon(request))
+    if not ok:
+        messages.error(request, msg)
+        return redirect('carrito:ver_carrito')
+    request.session[SESSION_KEY] = cupon.codigo
+    desc = cupon.calcular_descuento(subtotal)
+    messages.success(request, 'Cupón {} aplicado: ${:,.0f} de descuento.'.format(
+        cupon.codigo, desc).replace(',', '.'))
+    return redirect('carrito:ver_carrito')
+
+
+@require_POST
+def quitar_cupon(request):
+    from pedidos.cupones import limpiar_cupon
+    limpiar_cupon(request)
+    messages.info(request, 'Cupón quitado.')
+    return redirect('carrito:ver_carrito')
 
 
 @require_POST
