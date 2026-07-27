@@ -307,6 +307,36 @@ Ver en gestion: /gestion/pedidos/{pid}/
         logger.exception('FALLO al enviar alerta de reembolso del pedido #%s', pedido.pk)
 
 
+def _registrar_uso_cupon(pedido):
+    """
+    Registra el uso del cupon del pedido: suma al contador global y deja el
+    registro por email (que es lo que controla el tope por persona).
+
+    Se llama SOLO cuando el pago ya entro y el pedido queda confirmado. Antes
+    esto vivia en crear_pedido(), o sea se quemaba el cupon apenas se generaba
+    el pedido: si el cliente abandonaba el checkout de la pasarela o le
+    rechazaban la tarjeta, el uso quedaba consumido igual. Con el default de
+    usos_por_usuario=1 eso dejaba al cliente sin poder usarlo NUNCA mas, sin
+    haber comprado nada (ver Cupon.validar()).
+
+    Idempotente: si ya existe el UsoCupon de este par (cupon, pedido), no
+    vuelve a contar.
+    """
+    from django.db.models import F
+    from .models import Cupon, UsoCupon
+
+    if not pedido.cupon_id or not pedido.descuento:
+        return
+    _uso, creado = UsoCupon.objects.get_or_create(
+        cupon_id=pedido.cupon_id,
+        pedido=pedido,
+        defaults={'email': pedido.email_destinatario or ''},
+    )
+    if creado:
+        Cupon.objects.filter(pk=pedido.cupon_id).update(
+            usos_actuales=F('usos_actuales') + 1)
+
+
 def _confirmar_pedido(pedido, mp_payment_id='', mp_status='', medio_pago_detalle=''):
     """
     Confirma el pedido: descuenta stock, marca confirmado, manda emails.
@@ -364,6 +394,10 @@ def _confirmar_pedido(pedido, mp_payment_id='', mp_status='', medio_pago_detalle
                 obj.save(update_fields=['stock'])
             p.estado = 'confirmado'
             p.save()
+            # El pago entro y el pedido se cumple: recien ahora el cupon
+            # cuenta como usado. Va dentro de la transaccion para que se
+            # revierta junto con el stock si algo falla.
+            _registrar_uso_cupon(p)
 
     if sin_stock:
         logger.error(
@@ -480,12 +514,10 @@ def crear_pedido(request):
                     )
                 # Vaciar el carrito
                 carrito.items.all().delete()
-                # Registrar el uso del cupón (contador + registro por email).
-                if cupon_obj and descuento > 0:
-                    from django.db.models import F
-                    from .models import Cupon, UsoCupon
-                    Cupon.objects.filter(pk=cupon_obj.pk).update(usos_actuales=F('usos_actuales') + 1)
-                    UsoCupon.objects.create(cupon=cupon_obj, email=email, pedido=pedido)
+                # OJO: el uso del cupón NO se registra acá. El pedido todavía no
+                # está pagado y el cliente puede abandonar el checkout de la
+                # pasarela. Se registra en _confirmar_pedido(), cuando la plata
+                # entró de verdad.
         except Exception as e:
             logger.exception('Error al crear pedido para %s', email)
             messages.error(request, 'Error al crear el pedido: {}'.format(str(e)[:120]))

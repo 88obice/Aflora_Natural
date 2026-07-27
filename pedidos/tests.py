@@ -530,7 +530,163 @@ class TrackingPublicoTokenTests(TestCase):
 
 
 # =========================================================================
-# 6. Endpoints por pk protegidos contra enumeracion (IDOR)
+# 6. Cupones: el uso se cuenta al PAGAR, no al crear el pedido
+# =========================================================================
+
+class UsoCuponTests(TestCase):
+    """
+    El cupon se consume cuando entra la plata, no cuando se genera el pedido.
+
+    El bug que esto previene: si se contaba al crear el pedido, un cliente que
+    abandonaba el checkout de la pasarela quemaba su unico uso y despues
+    Cupon.validar() le respondia "Ya usaste este cupon" para siempre, sin
+    haber comprado nada.
+    """
+
+    def setUp(self):
+        from pedidos.models import Cupon
+        self.cat = Categoria.objects.create(nombre='Velas')
+        self.producto = Producto.objects.create(
+            categoria=self.cat, nombre='Vela Lavanda',
+            descripcion='x', precio=Decimal('5000'), stock=10,
+        )
+        self.user = User.objects.create_user('cli', 'cli@t.com', 'pass1234')
+        self.cupon = Cupon.objects.create(
+            codigo='GRACIAS15', tipo='porcentaje', valor=Decimal('15'),
+            usos_por_usuario=1,
+        )
+
+    def _crear_pedido(self, cantidad=2, con_cupon=True):
+        subtotal = self.producto.precio * cantidad
+        descuento = self.cupon.calcular_descuento(subtotal) if con_cupon else Decimal('0')
+        pedido = Pedido.objects.create(
+            usuario=self.user, telefono='+56912345678',
+            metodo_envio='retiro_local',
+            subtotal=subtotal, costo_envio=Decimal('0'),
+            cupon=self.cupon if con_cupon else None,
+            descuento=descuento,
+            total=subtotal - descuento,
+        )
+        ItemPedido.objects.create(
+            pedido=pedido, producto=self.producto,
+            cantidad=cantidad, precio_unitario=self.producto.precio,
+            nombre_snapshot=self.producto.nombre,
+        )
+        return pedido
+
+    def test_pedido_creado_sin_pagar_no_consume_el_cupon(self):
+        """El corazon del fix: pedido pendiente => cupon intacto."""
+        from pedidos.models import UsoCupon
+        self._crear_pedido()
+        self.cupon.refresh_from_db()
+        self.assertEqual(self.cupon.usos_actuales, 0)
+        self.assertEqual(UsoCupon.objects.count(), 0)
+        # Y el cliente todavia puede usarlo
+        ok, msg = self.cupon.validar(Decimal('10000'), 'cli@t.com')
+        self.assertTrue(ok, msg)
+
+    @patch('pedidos.views._crear_preferencia_mp', return_value='')
+    def test_checkout_completo_no_quema_el_cupon_antes_de_pagar(self, _mock_mp):
+        """
+        Regresion del bug real, pasando por la vista de checkout de verdad:
+        el cliente aplica el cupon, genera el pedido y NO paga (abandona el
+        checkout de la pasarela). Su cupon tiene que seguir disponible.
+        """
+        from carrito.models import Carrito, ItemCarrito
+        from pedidos.cupones import SESSION_KEY
+        from pedidos.models import UsoCupon
+
+        self.client.force_login(self.user)
+        carrito = Carrito.objects.create(usuario=self.user)
+        ItemCarrito.objects.create(carrito=carrito, producto=self.producto, cantidad=2)
+
+        sesion = self.client.session
+        sesion[SESSION_KEY] = self.cupon.codigo
+        sesion.save()
+
+        resp = self.client.post('/pedidos/crear/', data={
+            'metodo_envio': 'retiro_local',
+            'telefono': '+56912345678',
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        # El pedido se creo y con el descuento aplicado...
+        pedido = Pedido.objects.get()
+        self.assertEqual(pedido.estado, 'pendiente')
+        self.assertEqual(pedido.cupon, self.cupon)
+        self.assertEqual(pedido.descuento, Decimal('1500'))  # 15% de 10.000
+
+        # ...pero el cupon NO se consumio, porque no entro un peso todavia.
+        self.cupon.refresh_from_db()
+        self.assertEqual(self.cupon.usos_actuales, 0)
+        self.assertEqual(UsoCupon.objects.count(), 0)
+        ok, msg = self.cupon.validar(Decimal('10000'), 'cli@t.com')
+        self.assertTrue(ok, msg)
+
+    def test_confirmar_pedido_consume_el_cupon(self):
+        from pedidos.models import UsoCupon
+        from pedidos.views import _confirmar_pedido
+        pedido = self._crear_pedido()
+        _confirmar_pedido(pedido, mp_payment_id='123', mp_status='approved')
+        self.cupon.refresh_from_db()
+        self.assertEqual(self.cupon.usos_actuales, 1)
+        uso = UsoCupon.objects.get()
+        self.assertEqual(uso.email, 'cli@t.com')
+        self.assertEqual(uso.pedido, pedido)
+        # Ahora si: agotado para este cliente
+        ok, _msg = self.cupon.validar(Decimal('10000'), 'cli@t.com')
+        self.assertFalse(ok)
+
+    def test_confirmar_dos_veces_cuenta_un_solo_uso(self):
+        """El webhook MP llega repetido; el cupon no se puede contar doble."""
+        from pedidos.models import UsoCupon
+        from pedidos.views import _confirmar_pedido
+        pedido = self._crear_pedido()
+        _confirmar_pedido(pedido, mp_payment_id='123', mp_status='approved')
+        _confirmar_pedido(pedido, mp_payment_id='123', mp_status='approved')
+        self.cupon.refresh_from_db()
+        self.assertEqual(self.cupon.usos_actuales, 1)
+        self.assertEqual(UsoCupon.objects.count(), 1)
+
+    def test_pedido_pagado_sin_stock_no_consume_el_cupon(self):
+        """
+        Pago recibido pero sin stock => pedido cancelado y a reembolsar.
+        El cliente no se llevo nada, asi que el cupon le queda disponible.
+        """
+        from pedidos.models import UsoCupon
+        from pedidos.views import _confirmar_pedido
+        pedido = self._crear_pedido(cantidad=15)  # stock es 10
+        _confirmar_pedido(pedido, mp_payment_id='123', mp_status='approved')
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'cancelado')
+        self.cupon.refresh_from_db()
+        self.assertEqual(self.cupon.usos_actuales, 0)
+        self.assertEqual(UsoCupon.objects.count(), 0)
+
+    def test_pedido_sin_cupon_no_registra_nada(self):
+        from pedidos.models import UsoCupon
+        from pedidos.views import _confirmar_pedido
+        pedido = self._crear_pedido(con_cupon=False)
+        _confirmar_pedido(pedido, mp_payment_id='123', mp_status='approved')
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, 'confirmado')
+        self.assertEqual(UsoCupon.objects.count(), 0)
+
+    def test_tope_total_de_usos_cuenta_solo_pedidos_pagados(self):
+        """
+        usos_maximos=1: un pedido abandonado no debe agotar el cupon para el
+        resto de los clientes.
+        """
+        self.cupon.usos_maximos = 1
+        self.cupon.save(update_fields=['usos_maximos'])
+        self._crear_pedido()  # queda pendiente, nunca se paga
+        self.cupon.refresh_from_db()
+        ok, msg = self.cupon.validar(Decimal('10000'), 'otro@cliente.com')
+        self.assertTrue(ok, msg)
+
+
+# =========================================================================
+# 7. Endpoints por pk protegidos contra enumeracion (IDOR)
 # =========================================================================
 
 class EndpointsPorPkAuthTests(TestCase):
