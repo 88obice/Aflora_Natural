@@ -61,7 +61,16 @@
                 {% if pedido.estado != 'cancelado' %}
                 <li class="{% if pedido.estado == 'confirmado' or pedido.estado == 'preparando' or pedido.estado == 'enviado' or pedido.estado == 'entregado' %}activo{% endif %}">Pago confirmado</li>
                 <li class="{% if pedido.estado == 'preparando' or pedido.estado == 'enviado' or pedido.estado == 'entregado' %}activo{% endif %}">Preparando envío</li>
-                <li class="{% if pedido.estado == 'enviado' or pedido.estado == 'entregado' %}activo{% endif %}">En camino{% if pedido.codigo_seguimiento %} · Cód: {{ pedido.codigo_seguimiento }}{% endif %}</li>
+                <li class="{% if pedido.estado == 'enviado' or pedido.estado == 'entregado' %}activo{% endif %}">
+                    En camino{% if pedido.codigo_seguimiento %} · Cód:
+                        {% if pedido.url_seguimiento %}
+                            {# Con el courier configurado, el codigo es un link al rastreo. #}
+                            <a href="{{ pedido.url_seguimiento }}" target="_blank" rel="noopener noreferrer">{{ pedido.codigo_seguimiento }}</a>
+                        {% else %}
+                            {{ pedido.codigo_seguimiento }}
+                        {% endif %}
+                    {% endif %}
+                </li>
                 <li class="{% if pedido.estado == 'entregado' %}activo{% endif %}">Entregado</li>
                 {% else %}
                 <li class="activo" style="color:#721c24;">Cancelado</li>
@@ -102,7 +111,7 @@
                 {% if pedido.descuento %}
                 <tr><td class="text-end" style="color:#2e7d32;">Cupón {{ pedido.cupon.codigo }}</td><td class="text-end" style="color:#2e7d32;">− {{ pedido.descuento|clp }}</td></tr>
                 {% endif %}
-                <tr><td class="text-end text-muted">Envío</td><td class="text-end">{% if pedido.metodo_envio == 'retiro_local' %}Retiro en local{% else %}{{ pedido.costo_envio|clp }}{% endif %}</td></tr>
+                <tr><td class="text-end text-muted">Envío</td><td class="text-end">{% if pedido.envio_por_pagar %}Por pagar{% else %}Retiro en local{% endif %}</td></tr>
                 <tr><td class="text-end"><strong>Total</strong></td><td class="text-end precio"><strong>{{ pedido.total|clp }}</strong></td></tr>
             </table>
         </div>

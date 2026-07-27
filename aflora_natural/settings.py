@@ -155,7 +155,9 @@ HERO_IMAGEN_URL = os.getenv('HERO_IMAGEN_URL', '').strip()
 # Umbral de envio gratis (en CLP). Fuente unica de verdad: antes estaba
 # hardcodeado en 3 archivos (envios.py, carrito, pedidos). Configurable por env
 # para que se ajuste sin tocar codigo.
-ENVIO_GRATIS_UMBRAL = int(os.getenv('ENVIO_GRATIS_UMBRAL', '40000'))
+# (Se quito ENVIO_GRATIS_UMBRAL: estaba definida y documentada, pero ningun
+#  codigo la leia — era una promo que se saco y dejo restos. Hoy el despacho va
+#  por pagar, asi que no hay umbral que configurar. Ver pedidos/envios.py.)
 
 
 # ── Contraseñas ─────────────────────────────────────────────────────────────
@@ -308,6 +310,21 @@ CONTACTO = {
 # las variables en Railway. Sin tracking en local/desarrollo.
 GA4_MEASUREMENT_ID = os.getenv('GA4_MEASUREMENT_ID', '').strip()
 META_PIXEL_ID      = os.getenv('META_PIXEL_ID', '').strip()
+
+# ── Courier (para el link de seguimiento) ───────────────────────────────────
+# Patron dormido: sin COURIER_URL_SEGUIMIENTO, el codigo de seguimiento se
+# muestra como texto suelto (como hasta ahora) y el cliente tiene que buscar
+# el sitio del courier a mano. Con la URL configurada, se convierte en un link
+# directo al rastreo, en la pagina de seguimiento y en el email de "enviado".
+#
+# La URL lleva {codigo} donde va el numero de seguimiento. Ejemplos de forma
+# (confirmar la real en el sitio del courier antes de usarla):
+#   COURIER_URL_SEGUIMIENTO=https://www.example-courier.cl/seguimiento?n={codigo}
+COURIER = {
+    'nombre':          os.getenv('COURIER_NOMBRE', '').strip(),
+    'url_seguimiento': os.getenv('COURIER_URL_SEGUIMIENTO', '').strip(),
+}
+
 
 # ── Transferencia bancaria (datos para checkout) ────────────────────────────
 # Si BANCO_TITULAR vacio, la opcion "transferencia" no aparece en checkout.

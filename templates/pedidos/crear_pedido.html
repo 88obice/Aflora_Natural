@@ -198,11 +198,21 @@
                 {% endif %}
                 <div class="summary-row">
                     <span>Envío</span>
-                    <span id="envioMostrar" class="text-muted">Calculando...</span>
+                    <span id="envioMostrar" class="text-muted">Por pagar</span>
                 </div>
                 <div class="summary-total">
                     <span>Total</span>
                     <span id="totalMostrar">{{ subtotal|clp }}</span>
+                </div>
+
+                {# El cliente TIENE que saber esto antes de pagar: si se
+                   enterara al recibir el paquete podria rechazarlo. #}
+                <div id="avisoPorPagar" class="mt-2 p-2"
+                     style="background:var(--cream-dark); border-radius:4px; font-size:0.78rem; line-height:1.5;">
+                    <strong>El despacho se paga al recibir.</strong>
+                    El total de arriba cubre solo los productos: el valor del
+                    envío lo cobra el courier al entregarte, según tu dirección.
+                    Te contactamos para coordinar.
                 </div>
 
                 <button type="submit" class="btn btn-primary w-100 mt-3" id="btnContinuar" style="padding:0.8rem; letter-spacing:0.08em; text-transform:uppercase; font-size:0.88rem;">
@@ -221,9 +231,10 @@
     // Regiones y comunas de Chile (fuente: pedidos/regiones_chile.py)
     const REGIONES_COMUNAS = {{ REGIONES_COMUNAS_JSON|safe }};
     // Costos (deben coincidir con pedidos/envios.py)
-    const COSTO_RM_URBANA = 3500;
-    const COSTO_RM_RESTO = 4500;
-    const COSTO_REGIONES = 5500;
+    // El sitio no cobra despacho: va por pagar (lo cobra el courier al
+    // entregar). Antes habia tres tarifas duplicadas aca y en envios.py, que
+    // podian quedar desincronizadas entre lo que veia el cliente y lo que se
+    // guardaba en el pedido.
     const SUBTOTAL = {{ subtotal|floatformat:0 }};
     const DESCUENTO = {{ descuento|default:0|floatformat:0 }};
     // Comunas urbanas de la RM (normalizadas sin tildes; deben coincidir con envios.py)
@@ -252,19 +263,18 @@
         });
     }
 
-    function calcularEnvio() {
-        const metodo = document.querySelector('input[name="metodo_envio"]:checked').value;
-        if (metodo === 'retiro_local') return 0;
-        if (!norm(selRegion.value).includes('metropolitana')) return COSTO_REGIONES;
-        return COMUNAS_URBANAS_RM.includes(norm(selComuna.value)) ? COSTO_RM_URBANA : COSTO_RM_RESTO;
+    function esRetiroEnLocal() {
+        return document.querySelector('input[name="metodo_envio"]:checked').value === 'retiro_local';
     }
 
     function actualizar() {
-        const envio = calcularEnvio();
+        // El total NUNCA suma despacho: el sitio no lo cobra.
+        const retiro = esRetiroEnLocal();
         const el = document.getElementById('envioMostrar');
-        el.textContent = envio === 0 ? 'Gratis' : formatoCLP(envio);
-        el.classList.toggle('text-muted', envio === 0);
-        document.getElementById('totalMostrar').textContent = formatoCLP(SUBTOTAL - DESCUENTO + envio);
+        el.textContent = retiro ? 'Gratis' : 'Por pagar';
+        el.classList.toggle('text-muted', retiro);
+        document.getElementById('avisoPorPagar').style.display = retiro ? 'none' : 'block';
+        document.getElementById('totalMostrar').textContent = formatoCLP(SUBTOTAL - DESCUENTO);
     }
 
     // Init: preseleccionar región y poblar comunas

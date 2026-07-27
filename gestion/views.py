@@ -73,9 +73,18 @@ WhatsApp +56 9 8956 0937
 
     asunto_tpl, cuerpo_tpl = asunto_y_cuerpo[estado_nuevo]
 
+    # Con COURIER_URL_SEGUIMIENTO configurada, el codigo va acompaniado del
+    # link directo al rastreo. Sin ella, va solo el numero (el cliente busca
+    # el sitio del courier a mano) — ver Pedido.url_seguimiento.
     tracking = ''
     if estado_nuevo == 'enviado' and pedido.codigo_seguimiento:
         tracking = 'Codigo de seguimiento: {}\n'.format(pedido.codigo_seguimiento)
+        if pedido.url_seguimiento:
+            nombre_courier = (getattr(settings, 'COURIER', {}) or {}).get('nombre', '')
+            tracking += 'Segui tu envio{}: {}\n'.format(
+                ' en {}'.format(nombre_courier) if nombre_courier else '',
+                pedido.url_seguimiento,
+            )
 
     # Link de tracking publico (con token impredecible) — funciona sin login
     base_url = getattr(settings, 'BASE_URL', '').rstrip('/')

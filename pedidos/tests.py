@@ -14,40 +14,109 @@ from django.contrib.auth.models import User
 
 from catalogo.models import Categoria, Producto, Variante
 from pedidos.models import Pedido, ItemPedido
-from pedidos.envios import (
-    calcular_costo_envio,
-    COSTO_ENVIO_RM_URBANA,
-    COSTO_ENVIO_RM_RESTO,
-    COSTO_ENVIO_REGIONES,
-)
+from pedidos.envios import calcular_costo_envio, envio_es_por_pagar
 
 
 # =========================================================================
-# 1. Costos de envio
+# 1. Envio: el sitio no cobra despacho (va por pagar)
 # =========================================================================
 
-class CalculoCostoEnvioTests(TestCase):
+class CostoEnvioPorPagarTests(TestCase):
+    """
+    El sitio cobra 0 de despacho: el courier le cobra al destinatario al
+    entregar. Antes habia tres tarifas escritas a mano que nunca salieron de
+    una cotizacion real; la de regiones cobraba lo mismo para Vina que para
+    Punta Arenas, asi que cada envio largo se vendia a perdida.
+    """
 
-    def test_retiro_local_es_gratis(self):
-        c = calcular_costo_envio('retiro_local', 'Las Condes', 'Region Metropolitana', 10000)
-        self.assertEqual(c, Decimal('0'))
+    def test_retiro_local_no_cuesta(self):
+        self.assertEqual(
+            calcular_costo_envio('retiro_local', 'Las Condes', 'Region Metropolitana', 10000),
+            Decimal('0'))
 
-    def test_envio_rm_urbana(self):
-        c = calcular_costo_envio('envio_domicilio', 'Las Condes', 'Region Metropolitana', 10000)
-        self.assertEqual(c, COSTO_ENVIO_RM_URBANA)
+    def test_envio_a_domicilio_no_lo_cobra_el_sitio(self):
+        self.assertEqual(
+            calcular_costo_envio('envio_domicilio', 'Las Condes', 'Region Metropolitana', 10000),
+            Decimal('0'))
 
-    def test_envio_rm_resto(self):
-        c = calcular_costo_envio('envio_domicilio', 'Melipilla', 'Region Metropolitana', 10000)
-        self.assertEqual(c, COSTO_ENVIO_RM_RESTO)
+    def test_ninguna_comuna_ni_region_agrega_costo(self):
+        """
+        El punto del cambio: NINGUN destino puede meterle un monto inventado
+        al pedido. Si manana alguien vuelve a poner tarifas fijas, esto falla.
+        """
+        destinos = [
+            ('Las Condes', 'Region Metropolitana'),
+            ('Melipilla', 'Region Metropolitana'),
+            ('NoExiste', 'Region Metropolitana'),
+            ('Vina del Mar', 'Region de Valparaiso'),
+            ('Punta Arenas', 'Region de Magallanes'),
+        ]
+        for comuna, region in destinos:
+            with self.subTest(destino=comuna):
+                self.assertEqual(
+                    calcular_costo_envio('envio_domicilio', comuna, region, 10000),
+                    Decimal('0'))
 
-    def test_envio_otra_region(self):
-        c = calcular_costo_envio('envio_domicilio', 'Vina del Mar', 'Region de Valparaiso', 10000)
-        self.assertEqual(c, COSTO_ENVIO_REGIONES)
+    def test_a_domicilio_es_por_pagar_y_retiro_no(self):
+        """Lo que decide si se muestra "Por pagar" o "Retiro en local"."""
+        self.assertTrue(envio_es_por_pagar('envio_domicilio'))
+        self.assertFalse(envio_es_por_pagar('retiro_local'))
 
-    def test_comuna_desconocida_cae_en_resto_rm(self):
-        # Si la comuna no esta en ninguna lista pero region es RM, cae en resto
-        c = calcular_costo_envio('envio_domicilio', 'NoExiste', 'Region Metropolitana', 10000)
-        self.assertEqual(c, COSTO_ENVIO_RM_RESTO)
+
+class UrlSeguimientoTests(TestCase):
+    """
+    El codigo de seguimiento se vuelve un link al rastreo del courier, pero
+    solo si hay con que armarlo: patron dormido, igual que Flow o el banco.
+    """
+
+    def setUp(self):
+        self.pedido = Pedido.objects.create(
+            usuario=None, nombre_cliente='Juan', email_cliente='j@t.com',
+            telefono='+56912345678', metodo_envio='envio_domicilio',
+            calle_numero='Los Olmos 123', comuna='Nunoa',
+            subtotal=Decimal('5000'), costo_envio=Decimal('0'),
+            total=Decimal('5000'))
+
+    @override_settings(COURIER={'nombre': 'Mi Courier',
+                               'url_seguimiento': 'https://courier.test/rastreo?n={codigo}'})
+    def test_arma_el_link_con_el_codigo(self):
+        self.pedido.codigo_seguimiento = 'CL123456789'
+        self.assertEqual(self.pedido.url_seguimiento,
+                         'https://courier.test/rastreo?n=CL123456789')
+
+    @override_settings(COURIER={'nombre': '', 'url_seguimiento': ''})
+    def test_sin_courier_configurado_no_hay_link(self):
+        """Sin la variable, el codigo se muestra como texto suelto."""
+        self.pedido.codigo_seguimiento = 'CL123456789'
+        self.assertEqual(self.pedido.url_seguimiento, '')
+
+    @override_settings(COURIER={'nombre': 'Mi Courier',
+                               'url_seguimiento': 'https://courier.test/rastreo?n={codigo}'})
+    def test_sin_codigo_todavia_no_hay_link(self):
+        """Recien despachado no tiene codigo: no inventamos un link roto."""
+        self.assertEqual(self.pedido.codigo_seguimiento, '')
+        self.assertEqual(self.pedido.url_seguimiento, '')
+
+    @override_settings(COURIER={'nombre': 'Mi Courier',
+                               'url_seguimiento': 'https://courier.test/rastreo?n={codigo}'})
+    def test_el_codigo_se_escapa_para_la_url(self):
+        """Un codigo con espacios no puede romper el link."""
+        self.pedido.codigo_seguimiento = 'CL 123 456'
+        self.assertNotIn(' ', self.pedido.url_seguimiento)
+        self.assertIn('CL%20123%20456', self.pedido.url_seguimiento)
+
+    @override_settings(COURIER={'nombre': 'Mi Courier',
+                               'url_seguimiento': 'https://courier.test/rastreo?n={codigo}'})
+    def test_el_seguimiento_publico_muestra_el_link(self):
+        self.pedido.codigo_seguimiento = 'CL123456789'
+        self.pedido.estado = 'enviado'
+        self.pedido.save()
+        resp = self.client.get('/pedidos/track/{}/'.format(self.pedido.token_publico))
+        self.assertContains(resp, 'https://courier.test/rastreo?n=CL123456789')
+
+    def test_el_seguimiento_publico_dice_por_pagar(self):
+        resp = self.client.get('/pedidos/track/{}/'.format(self.pedido.token_publico))
+        self.assertContains(resp, 'Por pagar')
 
 
 # =========================================================================

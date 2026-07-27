@@ -158,6 +158,32 @@ class Pedido(models.Model):
             return self.usuario.get_full_name() or self.usuario.username
         return self.nombre_cliente or 'Cliente'
 
+    @property
+    def envio_por_pagar(self):
+        """
+        True si al cliente hay que avisarle que el despacho lo paga al recibir.
+        Se usa en el checkout, los emails y el seguimiento para mostrar
+        "Por pagar" en vez de "$0", que se leeria como envio gratis.
+        """
+        from .envios import envio_es_por_pagar
+        return envio_es_por_pagar(self.metodo_envio)
+
+    @property
+    def url_seguimiento(self):
+        """
+        Link al rastreo del courier, o '' si no hay con que armarlo.
+
+        Necesita las dos cosas: el codigo que carga la duenia al despachar y
+        COURIER_URL_SEGUIMIENTO configurada. Sin la variable, el codigo se
+        sigue mostrando como texto (el cliente lo busca a mano).
+        """
+        from django.conf import settings
+        plantilla = (getattr(settings, 'COURIER', {}) or {}).get('url_seguimiento', '')
+        if not plantilla or not self.codigo_seguimiento:
+            return ''
+        from urllib.parse import quote
+        return plantilla.replace('{codigo}', quote(self.codigo_seguimiento.strip()))
+
     def direccion_formateada(self):
         if self.metodo_envio == 'retiro_local':
             return 'Retiro en local'

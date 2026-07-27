@@ -45,9 +45,9 @@ Tu pedido #{pid} fue confirmado.
 {items}
 
 Subtotal: ${sub:,}{descuento_linea}
-Envio:    ${env:,}
+Envio:    {env}
 Total:    ${tot:,}
-
+{aviso_envio}
 Entrega: {dir}
 Telefono: {tel}
 
@@ -66,8 +66,15 @@ Si tienes dudas: WhatsApp +56 9 8956 0937
             '\nDescuento ({}): -${:,}'.format(pedido.cupon.codigo, int(pedido.descuento))
             if pedido.descuento else ''
         ),
-        env=int(pedido.costo_envio),
+        # "Por pagar" en vez de "$0": un cero se leeria como envio gratis, y el
+        # cliente se llevaria una sorpresa cuando el courier le cobre.
+        env=('Por pagar' if pedido.envio_por_pagar else 'Retiro en local'),
         tot=int(pedido.total),
+        aviso_envio=(
+            '\nEl total cubre solo los productos. El valor del despacho lo\n'
+            'cobra el courier al entregarte, segun tu direccion.\n'
+            if pedido.envio_por_pagar else ''
+        ),
         dir=direccion,
         tel=pedido.telefono,
         link=link_tracking,

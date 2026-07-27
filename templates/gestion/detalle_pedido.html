@@ -52,7 +52,7 @@
                     {% if pedido.descuento %}
                     <tr><td colspan="3" class="text-end" style="color:#2e7d32;">Cupón {{ pedido.cupon.codigo }}</td><td class="text-end" style="color:#2e7d32;">− {{ pedido.descuento|clp }}</td></tr>
                     {% endif %}
-                    <tr><td colspan="3" class="text-end text-muted">Envío</td><td class="text-end">{% if pedido.metodo_envio == 'retiro_local' %}Retiro en local{% else %}{{ pedido.costo_envio|clp }}{% endif %}</td></tr>
+                    <tr><td colspan="3" class="text-end text-muted">Envío</td><td class="text-end">{% if pedido.envio_por_pagar %}Por pagar{% else %}Retiro en local{% endif %}</td></tr>
                     <tr><td colspan="3" class="text-end"><strong>Total</strong></td><td class="text-end precio"><strong>{{ pedido.total|clp }}</strong></td></tr>
                 </tfoot>
             </table>
@@ -76,8 +76,23 @@
                 </div>
                 <button class="btn btn-primary btn-sm">Guardar</button>
             </form>
+
             {% if pedido.codigo_seguimiento %}
-                <small class="text-muted d-block mt-2">El cliente puede ver este código en su detalle de pedido.</small>
+                <small class="text-muted d-block mt-2">
+                    El cliente ve este código en su página de seguimiento.
+                    {% if pedido.url_seguimiento %}
+                        · <a href="{{ pedido.url_seguimiento }}" target="_blank" rel="noopener noreferrer">Ver el envío en el courier</a>
+                    {% endif %}
+                </small>
+            {% elif pedido.estado != 'entregado' and pedido.envio_por_pagar %}
+                {# Aviso de orden: el email al cliente se manda cuando el estado
+                   CAMBIA a enviado. Si se guarda "enviado" sin codigo, el aviso
+                   sale sin el, y despues no se reenvia. #}
+                <small class="d-block mt-2" style="color:#8a6d3b;">
+                    Si vas a marcarlo como <strong>Enviado</strong>, pegá primero el código
+                    de seguimiento: el email al cliente se manda en ese mismo momento
+                    y después no se reenvía.
+                </small>
             {% endif %}
         </div>
 

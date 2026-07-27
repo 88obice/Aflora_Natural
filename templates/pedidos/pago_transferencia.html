@@ -111,7 +111,7 @@
             </div>
             <div class="d-flex justify-content-between" style="font-size:0.88rem;">
                 <span class="text-muted">Envío</span>
-                <span>{% if pedido.costo_envio == 0 %}Gratis{% else %}{{ pedido.costo_envio|clp }}{% endif %}</span>
+                <span>{% if pedido.envio_por_pagar %}Por pagar{% else %}Retiro en local{% endif %}</span>
             </div>
             <div class="d-flex justify-content-between mt-2" style="font-size:1.05rem; font-weight:700; color:var(--terracotta);">
                 <span>Total</span><span>{{ pedido.total|clp }}</span>
