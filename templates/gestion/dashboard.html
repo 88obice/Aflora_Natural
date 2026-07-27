@@ -11,9 +11,10 @@
 
 {% block contenido %}
 
-{# ── Lo que hay que hacer hoy ────────────────────────────────────────────
-   Va primero y solo aparece si hay algo pendiente: si esta todo al dia, la
-   duenia no ve una lista vacia, ve directo sus numeros. #}
+{% comment %}
+Lo que hay que hacer hoy. Va primero, y solo aparece si hay algo pendiente:
+si esta todo al dia la duenia no ve una lista vacia, ve directo sus numeros.
+{% endcomment %}
 {% if pedidos_nuevos or pedidos_pendientes_pago or notificaciones_pendientes %}
 <div class="panel" style="border-color:var(--terracotta-l);">
     <h2>Pendiente</h2>
