@@ -115,6 +115,18 @@ class AccesoPanelGestionTests(TestCase):
                         nombre, resp.status_code),
                 )
 
+    def test_al_anonimo_lo_mandan_a_un_login_que_existe(self):
+        """
+        LOGIN_URL tiene que apuntar al login real (/usuarios/login/). Con el
+        default de Django ('/accounts/login/', que aca no existe) a la duenia
+        con la sesion vencida le aparecia un 404 en vez del formulario.
+        """
+        resp = self.client.get(reverse('gestion:dashboard'))
+        destino = urlparse(resp.url).path
+        self.assertEqual(destino, reverse('usuarios:login'))
+        # Y ese destino tiene que responder de verdad, no 404.
+        self.assertEqual(self.client.get(destino).status_code, 200)
+
     def test_cliente_registrado_no_entra_al_panel(self):
         """Estar logueado no alcanza: hace falta is_staff."""
         self.client.force_login(self.cliente)

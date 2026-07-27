@@ -151,6 +151,12 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+# A donde manda @login_required a quien no tiene sesion. Sin esto Django usa
+# su default '/accounts/login/', que en este proyecto NO existe: el login vive
+# en /usuarios/login/. Resultado: a la duenia se le vencia la sesion, entraba a
+# /gestion/ y le aparecia un 404 en vez del formulario para volver a entrar.
+LOGIN_URL = 'usuarios:login'
+
 
 # ── Internacionalización ────────────────────────────────────────────────────
 LANGUAGE_CODE = 'es-cl'
