@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
 from django.http import JsonResponse, HttpResponseRedirect, Http404
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .models import (
@@ -284,22 +285,39 @@ def crear_resena(request, slug):
 
 # --- Newsletter -----------------------------------------------------------
 
-@require_POST
+def _volver_donde_estaba(request):
+    """
+    Vuelve a la pagina desde donde se envio el form (el newsletter esta en el
+    footer de todo el sitio, asi que no hay una sola URL a la que volver).
+
+    El Referer lo manda el navegador y lo controla quien hace el request: si
+    lo usaramos sin validar, alguien podria armar un form que rebote a un
+    sitio externo usando nuestro dominio como trampolin. Por eso solo lo
+    aceptamos si apunta a este mismo sitio; si no, al inicio.
+    """
+    referer = request.META.get('HTTP_REFERER', '')
+    if referer and url_has_allowed_host_and_scheme(
+        referer, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(referer)
+    return redirect('catalogo:inicio')
+
+
 @require_POST
 def suscribir_newsletter(request):
     # Anti-spam: honeypot + límite por IP.
     if not honeypot_ok(request):
-        return redirect(request.META.get('HTTP_REFERER', '/'))
+        return _volver_donde_estaba(request)
     if rate_limited(request, 'newsletter', limit=5, window=600):
         messages.error(request, 'Demasiadas solicitudes. Esperá unos minutos.')
-        return redirect(request.META.get('HTTP_REFERER', '/'))
+        return _volver_donde_estaba(request)
     email = request.POST.get('email', '').strip()
     if not email or '@' not in email:
         messages.error(request, 'Email invalido.')
-        return redirect(request.META.get('HTTP_REFERER', '/'))
+        return _volver_donde_estaba(request)
     SuscriptorNewsletter.objects.get_or_create(email=email, defaults={'activo': True})
     messages.success(request, 'Te suscribiste al newsletter. Gracias!')
-    return redirect(request.META.get('HTTP_REFERER', '/'))
+    return _volver_donde_estaba(request)
 
 
 # --- Paginas estaticas (renderizan templates simples) --------------------

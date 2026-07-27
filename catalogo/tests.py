@@ -295,6 +295,7 @@ class NewsletterTests(TestCase):
         self.assertTrue(self.s1.token_baja)
         self.assertNotEqual(self.s1.token_baja, self.s2.token_baja)
 
+
     def test_envio_real_solo_a_activos(self):
         from django.core import mail
         from catalogo.newsletter_sender import enviar_campana
@@ -347,3 +348,48 @@ class NewsletterTests(TestCase):
         resp = c.get('/newsletter/baja/token-falso-xyz/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'no es correcto')
+
+
+class SuscribirNewsletterRedirectTests(TestCase):
+    """
+    El form del newsletter vive en el footer de todo el sitio, asi que la
+    vista vuelve al Referer. Esa cabecera la controla quien hace el request,
+    asi que hay que validarla: sin eso, el sitio serviria de trampolin para
+    mandar gente a un dominio externo.
+    """
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()  # el rate limit del newsletter vive en cache
+
+    def tearDown(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_vuelve_a_la_pagina_interna_de_donde_vino(self):
+        resp = self.client.post(
+            '/newsletter/suscribir/', data={'email': 'nueva@test.com'},
+            HTTP_REFERER='http://testserver/productos/')
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, 'http://testserver/productos/')
+
+    def test_referer_externo_se_ignora_y_vuelve_al_inicio(self):
+        resp = self.client.post(
+            '/newsletter/suscribir/', data={'email': 'nueva@test.com'},
+            HTTP_REFERER='https://sitio-malicioso.example.com/trampa/')
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, '/')
+
+    def test_sin_referer_vuelve_al_inicio(self):
+        resp = self.client.post(
+            '/newsletter/suscribir/', data={'email': 'nueva@test.com'})
+        self.assertEqual(resp.url, '/')
+
+    def test_igual_queda_suscripta(self):
+        """El redirect es cosmetico: lo importante es que se guarde."""
+        from catalogo.models import SuscriptorNewsletter
+        self.client.post(
+            '/newsletter/suscribir/', data={'email': 'nueva@test.com'},
+            HTTP_REFERER='https://sitio-malicioso.example.com/trampa/')
+        self.assertTrue(
+            SuscriptorNewsletter.objects.filter(email='nueva@test.com').exists())

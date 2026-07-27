@@ -33,6 +33,27 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE    = True
 
+    # HSTS: le dice al navegador "para este dominio usá SIEMPRE HTTPS", y el
+    # navegador se lo GUARDA durante los segundos indicados. Por eso arrancamos
+    # con 1 hora: si algo sale mal (certificado, cambio de dominio), el efecto
+    # se pasa solo en poco tiempo. Cuando el dominio definitivo lleve un tiempo
+    # estable, subilo a 31536000 (1 año) desde la variable de entorno.
+    # A propósito NO activamos includeSubDomains ni preload: son muy difíciles
+    # de revertir y no hacen falta a esta escala.
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '3600'))
+
+
+# Avisos de `manage.py check --deploy` que estan asi A PROPOSITO. Se silencian
+# para que el check quede limpio y cualquier aviso NUEVO se note enseguida.
+# Si alguno deja de aplicar, sacalo de esta lista antes que del codigo.
+#   W005 SECURE_HSTS_INCLUDE_SUBDOMAINS — no lo activamos: afectaria a todos
+#        los subdominios y es muy dificil de revertir. No hay subdominios.
+#   W008 SECURE_SSL_REDIRECT — el proxy del host termina el SSL y al contenedor
+#        le llega HTTP; redirigir desde Django romperia el healthcheck.
+#   W021 SECURE_HSTS_PRELOAD — la lista de preload de los navegadores es casi
+#        permanente. No corresponde para un sitio que todavia no lanzo.
+SILENCED_SYSTEM_CHECKS = ['security.W005', 'security.W008', 'security.W021']
+
 
 # ── Aplicaciones ────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
