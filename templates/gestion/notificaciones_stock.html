@@ -1,6 +1,7 @@
-{% extends 'base.html' %}
-{% block content %}
-<h2>Notificaciones de stock pendientes</h2>
+{% extends 'gestion/base_gestion.html' %}
+
+{% block titulo_pagina %}Notificaciones de stock pendientes{% endblock %}
+{% block contenido %}
 <p class="text-muted small">Clientes que pidieron aviso cuando un producto vuelva.</p>
 <table class="table">
 <thead><tr><th>Producto</th><th>Email</th><th>Solicitado</th></tr></thead>

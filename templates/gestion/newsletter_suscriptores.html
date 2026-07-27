@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'gestion/base_gestion.html' %}
 {% block title %}Suscriptores newsletter — Gestión{% endblock %}
-{% block content %}
+{% block titulo_pagina %}Suscriptores del newsletter{% endblock %}
+{% block contenido %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Suscriptores del newsletter</h2>
     <div class="d-flex gap-2">
         {% if suscriptores %}
         <a href="{% url 'gestion:exportar_suscriptores' %}" class="btn btn-primary btn-sm">Exportar CSV</a>

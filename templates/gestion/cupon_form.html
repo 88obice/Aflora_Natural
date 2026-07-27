@@ -1,6 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'gestion/base_gestion.html' %}
 
 {% block title %}{% if modo == 'crear' %}Nuevo cupón{% else %}Editar cupón{% endif %} — Gestión{% endblock %}
+{% block titulo_pagina %}{% if modo == 'crear' %}Nuevo cupón{% else %}Editar cupón{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -11,9 +12,8 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block contenido %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>{% if modo == 'crear' %}Nuevo cupón{% else %}Editar cupón{% endif %}</h2>
     <a href="{% url 'gestion:cupones' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
 </div>
 

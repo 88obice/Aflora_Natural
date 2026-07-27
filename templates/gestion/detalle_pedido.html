@@ -1,59 +1,35 @@
-{% extends 'base.html' %}
+{% extends 'gestion/base_gestion.html' %}
 {% load aflora_filters %}
 
-{% block title %}Pedido #{{ pedido.pk }} — Gestión{% endblock %}
+{% block title %}Pedido #{{ pedido.pk }} — Gestión Aflora{% endblock %}
+{% block titulo_pagina %}Pedido #{{ pedido.pk }}{% endblock %}
+
+{% block acciones %}
+<a href="{% url 'gestion:pedidos' %}" class="btn btn-outline-primary btn-sm">← Volver a pedidos</a>
+{% endblock %}
 
 {% block extra_css %}
 <style>
-    .gestion-nav { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:0.8rem 1.2rem; margin-bottom:2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
-    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; }
-    .gestion-nav a:hover { color:var(--terracotta); }
-    .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
 
     .info-card { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:1.4rem; margin-bottom:1rem; }
     .info-card h6 { font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); font-weight:400; margin-bottom:0.7rem; }
     .info-row { display:flex; justify-content:space-between; padding:0.3rem 0; font-size:0.9rem; }
     .info-row .label { color:var(--text-muted); }
 
-    .estado-pill { display:inline-block; padding:0.2em 0.85em; border-radius:20px; font-size:0.78rem; }
-    .estado-pendiente   { background:#fff3cd; color:#856404; }
-    .estado-confirmado  { background:#d1ecf1; color:#0c5460; }
-    .estado-preparando  { background:#fcefdc; color:#856404; }
-    .estado-enviado     { background:#cce5ff; color:#004085; }
-    .estado-entregado   { background:#d4edda; color:#155724; }
-    .estado-cancelado   { background:#f8d7da; color:#721c24; }
 
-    .pago-pill { display:inline-block; padding:0.2em 0.85em; border-radius:20px; font-size:0.78rem; }
-    .pago-pendiente   { background:#fff3cd; color:#856404; }
-    .pago-pagado      { background:#d4edda; color:#155724; }
-    .pago-rechazado   { background:#f8d7da; color:#721c24; }
-    .pago-reembolsado { background:#e2d9f3; color:#4b3b6b; }
 
     .items-table th { font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); font-weight:400; border-color:var(--rose-light); }
     .items-table td { border-color:var(--rose-light); vertical-align:middle; font-size:0.88rem; }
 </style>
 {% endblock %}
 
-{% block content %}
+{% block contenido %}
 
-<div class="gestion-nav">
-    <span class="nav-title">Gestión</span>
-    <a href="{% url 'gestion:dashboard' %}">Dashboard</a>
-    <a href="{% url 'gestion:pedidos' %}">Pedidos</a>
-    <a href="{% url 'gestion:productos' %}">Productos</a>
-    <a href="{% url 'gestion:categorias_lista' %}">Categorías</a>
-    <a href="{% url 'gestion:resenas_lista' %}">Reseñas</a>
-    <a href="{% url 'gestion:newsletter_lista' %}">Newsletter</a>
-    <a href="{% url 'gestion:notificaciones_stock' %}">Notif. stock</a>
-</div>
-
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h2 class="mb-1">Pedido #{{ pedido.pk }}</h2>
-        <small class="text-muted">{{ pedido.creado|date:"d M Y H:i" }} · <span class="estado-pill estado-{{ pedido.estado }}">{{ pedido.get_estado_display }}</span></small>
-    </div>
-    <a href="{% url 'gestion:pedidos' %}" class="btn btn-outline-secondary btn-sm">← Volver a pedidos</a>
-</div>
+<p class="text-muted mb-3" style="margin-top:-0.75rem;">
+    {{ pedido.creado|date:"d M Y H:i" }} ·
+    <span class="estado-pill estado-{{ pedido.estado }}">{{ pedido.get_estado_display }}</span>
+    <span class="estado-pill pago-{{ pedido.estado_pago }}">{{ pedido.get_estado_pago_display }}</span>
+</p>
 
 <div class="row">
     <div class="col-md-8">

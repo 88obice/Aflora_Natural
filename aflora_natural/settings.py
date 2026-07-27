@@ -104,6 +104,8 @@ TEMPLATES = [
                 'aflora_natural.context_processors.seo_flags',
                 'aflora_natural.context_processors.categorias_nav',
                 'aflora_natural.context_processors.regiones_chile',
+                # Menu del panel /gestion/ (sale enseguida fuera del panel).
+                'gestion.context_processors.panel_gestion',
             ],
         },
     },

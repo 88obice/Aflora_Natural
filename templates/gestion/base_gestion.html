@@ -1,0 +1,281 @@
+{% comment %}
+Layout del panel de gestion.
+
+Antes cada pagina del panel extendia base.html (el de la tienda), asi que la
+duenia administraba con la navbar del cliente, el carrito y el banner de
+cookies encima. Ademas la barra de navegacion del panel estaba COPIADA en 8
+templates —y ausente en los otros 9—, con su CSS duplicado en cada uno.
+
+Aca la navegacion y los estilos del panel viven UNA sola vez.
+
+Pensado para el celular primero: la duenia carga productos y fotos desde el
+telefono. En pantalla chica el menu se despliega con el boton; desde 992px
+queda fijo a la izquierda.
+
+Cada pagina define tres bloques: titulo_pagina (el h1), acciones (los botones
+de esa pagina, arriba a la derecha) y contenido (el cuerpo).
+
+Que item del menu queda marcado NO lo decide cada template: lo deduce el
+context processor gestion.context_processors.panel_gestion a partir de la URL
+actual. Asi una pagina no puede olvidarse de declararlo ni declararlo mal.
+{% endcomment %}
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gestión — Aflora Natural{% endblock %}</title>
+    {# El panel nunca se indexa, pase lo que pase con SITE_NOINDEX. #}
+    <meta name="robots" content="noindex, nofollow">
+
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon_io/favicon.ico' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+{% include 'partials/design_tokens.html' %}
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--cream);
+            color: var(--text);
+            font-family: 'Lato', sans-serif;
+            /* Deja lugar al header fijo del celular. */
+            padding-top: 56px;
+        }
+        h1, h2, h3, h4, h5 { font-family: 'Playfair Display', serif; }
+
+        /* ── Header (solo visible en pantalla chica) ───────────────────── */
+        .g-header {
+            position: fixed; top: 0; left: 0; right: 0; height: 56px; z-index: 1040;
+            background: var(--terracotta-d); color: #fff;
+            display: flex; align-items: center; gap: 0.5rem; padding: 0 0.5rem;
+        }
+        .g-header .marca {
+            font-family: 'Playfair Display', serif; font-size: 1.05rem;
+            color: #fff; text-decoration: none; letter-spacing: 0.03em;
+        }
+        .g-header .marca span { font-weight: 300; font-style: italic; opacity: 0.85; }
+        .g-burger {
+            background: none; border: 1px solid rgba(255,255,255,0.35); color: #fff;
+            border-radius: 4px; width: 42px; height: 38px; font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        /* ── Menu lateral ──────────────────────────────────────────────── */
+        .g-nav {
+            position: fixed; top: 56px; bottom: 0; left: 0; width: 250px; z-index: 1035;
+            background: #fff; border-right: 1px solid var(--line);
+            overflow-y: auto; padding: 1rem 0 2rem;
+            transform: translateX(-100%); transition: transform 0.25s ease;
+        }
+        .g-nav.abierto { transform: translateX(0); }
+
+        .g-nav .grupo {
+            font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase;
+            color: var(--text-muted); padding: 1.1rem 1.2rem 0.35rem;
+        }
+        .g-nav a {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 0.5rem; padding: 0.75rem 1.2rem;
+            color: var(--text); text-decoration: none; font-size: 0.95rem;
+            border-left: 3px solid transparent;
+        }
+        .g-nav a:hover { background: var(--cream); color: var(--terracotta); }
+        .g-nav a.activo {
+            background: var(--cream-dark); color: var(--terracotta-d);
+            border-left-color: var(--terracotta); font-weight: 700;
+        }
+        .g-nav .badge-nav {
+            background: var(--terracotta); color: #fff; border-radius: 20px;
+            font-size: 0.7rem; padding: 0.1em 0.55em; font-weight: 700;
+        }
+        .g-nav .pie {
+            margin-top: 1.5rem; padding: 1rem 1.2rem 0; border-top: 1px solid var(--line);
+            display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .g-nav .pie a { padding: 0; font-size: 0.82rem; color: var(--text-muted); border: none; }
+        .g-nav .pie a:hover { background: none; }
+
+        /* Fondo oscuro detras del menu abierto (solo en celular). */
+        .g-backdrop {
+            position: fixed; inset: 56px 0 0 0; background: rgba(61,43,31,0.45);
+            z-index: 1030; display: none;
+        }
+        .g-backdrop.visible { display: block; }
+
+        /* ── Contenido ─────────────────────────────────────────────────── */
+        .g-main { padding: 1.1rem 1rem 3rem; }
+        .g-titulo-fila {
+            display: flex; flex-wrap: wrap; gap: 0.75rem;
+            align-items: center; justify-content: space-between; margin-bottom: 1.25rem;
+        }
+        .g-titulo-fila h1 { font-size: 1.5rem; margin: 0; }
+        .g-acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+        /* ── Piezas reutilizables del panel ────────────────────────────── */
+        .panel {
+            background: #fff; border: 1px solid var(--line); border-radius: 6px;
+            padding: 1.1rem; margin-bottom: 1rem;
+        }
+        .panel > h2, .panel > h5 {
+            font-size: 1rem; margin: 0 0 0.9rem;
+        }
+
+        .kpi-card {
+            background: #fff; border: 1px solid var(--line); border-radius: 6px;
+            padding: 1.1rem; height: 100%;
+        }
+        .kpi-card .label {
+            font-size: 0.7rem; letter-spacing: 0.09em; text-transform: uppercase;
+            color: var(--text-muted); margin-bottom: 0.35rem;
+        }
+        .kpi-card .value { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--terracotta); }
+        .kpi-card .sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+        .kpi-card.alerta { border-color: #f0c4c4; background: #fffafa; }
+        .kpi-card.alerta .value { color: #b03535; }
+
+        /* Tablas: en celular scrollean DENTRO de su caja, nunca la pagina. */
+        .tabla-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tabla-scroll table { margin: 0; font-size: 0.88rem; min-width: 100%; }
+        .tabla-scroll th {
+            font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;
+            color: var(--text-muted); font-weight: 400; border-color: var(--line);
+            white-space: nowrap;
+        }
+        .tabla-scroll td { border-color: var(--line); vertical-align: middle; }
+
+        .estado-pill {
+            display: inline-block; padding: 0.2em 0.7em; border-radius: 20px;
+            font-size: 0.72rem; white-space: nowrap;
+        }
+        .estado-pendiente   { background:#fff3cd; color:#856404; }
+        .estado-confirmado  { background:#d1ecf1; color:#0c5460; }
+        .estado-preparando  { background:#fcefdc; color:#856404; }
+        .estado-enviado     { background:#cce5ff; color:#004085; }
+        .estado-entregado   { background:#d4edda; color:#155724; }
+        .estado-cancelado   { background:#f8d7da; color:#721c24; }
+
+        .pago-pendiente   { background:#fff3cd; color:#856404; }
+        .pago-pagado      { background:#d4edda; color:#155724; }
+        .pago-rechazado   { background:#f8d7da; color:#721c24; }
+        .pago-reembolsado { background:#e2e3e5; color:#41464b; }
+
+        /* Botones: alto minimo comodo para el dedo. */
+        .btn { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-sm { min-height: 36px; }
+        .btn-primary {
+            background: var(--terracotta); border-color: var(--terracotta);
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background: var(--terracotta-d); border-color: var(--terracotta-d);
+        }
+        .btn-outline-primary { color: var(--terracotta); border-color: var(--terracotta); }
+        .btn-outline-primary:hover { background: var(--terracotta); border-color: var(--terracotta); }
+
+        /* 16px evita que el iPhone haga zoom al enfocar un campo. */
+        .form-control, .form-select { font-size: 16px; min-height: 44px; }
+        textarea.form-control { min-height: 90px; }
+        label { font-size: 0.85rem; color: var(--text-muted); }
+
+        .precio { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+        /* ── Escritorio ────────────────────────────────────────────────── */
+        @media (min-width: 992px) {
+            body { padding-top: 0; }
+            .g-header { display: none; }
+            .g-nav { top: 0; transform: none; }
+            .g-backdrop { display: none !important; }
+            .g-main { margin-left: 250px; padding: 1.75rem 2rem 4rem; }
+            .g-titulo-fila h1 { font-size: 1.9rem; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<header class="g-header">
+    <button class="g-burger" id="btnMenu" aria-label="Abrir menú" aria-expanded="false">☰</button>
+    <a href="{% url 'gestion:dashboard' %}" class="marca">Aflora <span>gestión</span></a>
+</header>
+
+<div class="g-backdrop" id="backdrop"></div>
+
+<nav class="g-nav" id="menu">
+    <div class="grupo">Día a día</div>
+    <a href="{% url 'gestion:dashboard' %}" class="{% if seccion == 'resumen' %}activo{% endif %}">Resumen</a>
+    <a href="{% url 'gestion:pedidos' %}" class="{% if seccion == 'pedidos' %}activo{% endif %}">
+        Pedidos
+        {% if gestion_por_preparar %}<span class="badge-nav">{{ gestion_por_preparar }}</span>{% endif %}
+    </a>
+
+    <div class="grupo">Catálogo</div>
+    <a href="{% url 'gestion:productos' %}" class="{% if seccion == 'productos' %}activo{% endif %}">Productos</a>
+    <a href="{% url 'gestion:categorias_lista' %}" class="{% if seccion == 'categorias' %}activo{% endif %}">Categorías</a>
+    <a href="{% url 'gestion:notificaciones_stock' %}" class="{% if seccion == 'avisos_stock' %}activo{% endif %}">
+        Avisos de stock
+        {% if gestion_avisos_stock %}<span class="badge-nav">{{ gestion_avisos_stock }}</span>{% endif %}
+    </a>
+
+    <div class="grupo">Clientes</div>
+    <a href="{% url 'gestion:clientes' %}" class="{% if seccion == 'clientes' %}activo{% endif %}">Clientes</a>
+    <a href="{% url 'gestion:newsletter_lista' %}" class="{% if seccion == 'newsletter' %}activo{% endif %}">Newsletter</a>
+    <a href="{% url 'gestion:newsletter_suscriptores' %}" class="{% if seccion == 'suscriptores' %}activo{% endif %}">Suscriptores</a>
+
+    <div class="grupo">Promoción</div>
+    <a href="{% url 'gestion:cupones' %}" class="{% if seccion == 'cupones' %}activo{% endif %}">Cupones</a>
+    <a href="{% url 'gestion:resenas_lista' %}" class="{% if seccion == 'resenas' %}activo{% endif %}">
+        Reseñas
+        {% if gestion_resenas_pendientes %}<span class="badge-nav">{{ gestion_resenas_pendientes }}</span>{% endif %}
+    </a>
+
+    <div class="pie">
+        <a href="{% url 'catalogo:inicio' %}">← Ver la tienda</a>
+        <a href="/admin/">Admin Django</a>
+        <a href="{% url 'usuarios:logout' %}">Cerrar sesión</a>
+    </div>
+</nav>
+
+<main class="g-main">
+    {% if messages %}
+        {% for m in messages %}
+        <div class="alert alert-{{ m.tags }} alert-dismissible fade show" role="alert">
+            {{ m }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="g-titulo-fila">
+        <h1>{% block titulo_pagina %}Gestión{% endblock %}</h1>
+        <div class="g-acciones">{% block acciones %}{% endblock %}</div>
+    </div>
+
+    {% block contenido %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Menu del celular. En escritorio el CSS lo deja fijo y esto no molesta.
+(function () {
+    const btn = document.getElementById('btnMenu');
+    const menu = document.getElementById('menu');
+    const fondo = document.getElementById('backdrop');
+    if (!btn || !menu) return;
+
+    function alternar(abrir) {
+        menu.classList.toggle('abierto', abrir);
+        fondo.classList.toggle('visible', abrir);
+        btn.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    }
+    btn.addEventListener('click', () => alternar(!menu.classList.contains('abierto')));
+    fondo.addEventListener('click', () => alternar(false));
+    // Al tocar una seccion, cerrar el menu (si no, tapa la pagina que se abre).
+    menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => alternar(false)));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') alternar(false); });
+})();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'gestion/base_gestion.html' %}
 {% block title %}{% if modo == 'crear' %}Nueva categoría{% else %}Editar: {{ categoria.nombre }}{% endif %}{% endblock %}
-{% block content %}
+{% block titulo_pagina %}{% if modo == 'crear' %}Nueva categoría{% else %}Editar: {{ categoria.nombre }}{% endif %}{% endblock %}
+{% block contenido %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>{% if modo == 'crear' %}Nueva categoría{% else %}Editar: {{ categoria.nombre }}{% endif %}</h2>
     <a href="{% url 'gestion:categorias_lista' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
 </div>
 <form method="post" enctype="multipart/form-data" class="card p-4" style="background:#fff; border-color:var(--rose-light); max-width:680px;">

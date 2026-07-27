@@ -1,0 +1,23 @@
+{% comment %}
+Paleta de la marca, en un solo lugar.
+
+La usan tanto la tienda (base.html) como el panel de gestion
+(gestion/base_gestion.html). Vive aca para que no puedan divergir: si el color
+de marca cambia, cambia en los dos lados a la vez.
+
+Se incluye DENTRO de un <style>, asi que no lleva la etiqueta.
+{% endcomment %}
+        :root {
+            --cream:        #FAF6F1;
+            --cream-dark:   #F0E8DE;
+            --cream-deep:   #EAE0D4;
+            --terracotta:   #8B5E3C;
+            --terracotta-d: #6B4528;
+            --terracotta-l: #A97A54;
+            --rose:         #C9A99A;
+            --rose-light:   #EDD9D1;
+            --amber:        #C4933F;
+            --text:         #3D2B1F;
+            --text-muted:   #9B7E68;
+            --line:         #E6D8CC;
+        }

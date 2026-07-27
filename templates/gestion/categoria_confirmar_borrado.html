@@ -1,5 +1,7 @@
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'gestion/base_gestion.html' %}
+{% block title %}Eliminar categoría — Gestión Aflora{% endblock %}
+{% block titulo_pagina %}Eliminar categoría{% endblock %}
+{% block contenido %}
 <div class="card p-4 mt-3" style="background:#fff; border-color:var(--rose-light); max-width:520px; margin:auto;">
     <h4>¿Eliminar categoría "{{ categoria.nombre }}"?</h4>
     {% if n_productos > 0 %}

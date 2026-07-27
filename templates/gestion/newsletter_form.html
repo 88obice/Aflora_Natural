@@ -1,13 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'gestion/base_gestion.html' %}
 {% load aflora_filters %}
 {% block title %}{% if modo == 'crear' %}Nueva campaña{% else %}Campaña #{{ campana.pk }}{% endif %}{% endblock %}
 {% block extra_css %}
 <style>
-    .gestion-nav { background:#fff; border:1px solid var(--rose-light); border-radius:4px; padding:0.8rem 1.2rem; margin-bottom:2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center; }
-    .gestion-nav a { font-size:0.85rem; color:var(--text-muted); text-decoration:none; }
-    .gestion-nav a:hover { color:var(--terracotta); }
-    .gestion-nav .nav-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--terracotta); margin-right:0.5rem; }
-    .estado-pill { display:inline-block; padding:0.18em 0.7em; border-radius:20px; font-size:0.72rem; }
     .estado-borrador { background:#e2e3e5; color:#383d41; }
     .estado-enviada  { background:#d4edda; color:#155724; }
     .estado-enviando { background:#fff3cd; color:#856404; }
@@ -15,23 +10,12 @@
     .danger-zone { background:#fff8f8; border:1px solid #f5c6cb; border-radius:4px; padding:1.2rem; margin-top:2rem; }
 </style>
 {% endblock %}
-{% block content %}
-<div class="gestion-nav">
-    <span class="nav-title">Gestión</span>
-    <a href="{% url 'gestion:dashboard' %}">Dashboard</a>
-    <a href="{% url 'gestion:pedidos' %}">Pedidos</a>
-    <a href="{% url 'gestion:productos' %}">Productos</a>
-    <a href="{% url 'gestion:categorias_lista' %}">Categorías</a>
-    <a href="{% url 'gestion:resenas_lista' %}">Reseñas</a>
-    <a href="{% url 'gestion:newsletter_lista' %}">Newsletter</a>
-    <a href="/admin/" class="ms-auto" style="font-size:0.78rem;">Admin Django →</a>
-</div>
+{% block titulo_pagina %}{% if modo == 'crear' %}Nueva campaña{% else %}Campaña #{{ campana.pk }}{% endif %}{% endblock %}
+
+{% block contenido %}
 
 <div class="d-flex justify-content-between align-items-start mb-3">
     <div>
-        <h2 class="mb-1">
-            {% if modo == 'crear' %}Nueva campaña{% else %}Campaña #{{ campana.pk }}{% endif %}
-        </h2>
         {% if campana %}
         <small><span class="estado-pill estado-{{ campana.estado }}">{{ campana.get_estado_display }}</span></small>
         {% endif %}

@@ -1,7 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'gestion/base_gestion.html' %}
 {% load aflora_filters %}
 
 {% block title %}Cupones — Gestión{% endblock %}
+{% block titulo_pagina %}Cupones de descuento{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -14,9 +15,8 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block contenido %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Cupones de descuento</h2>
     <div class="d-flex gap-2">
         <a href="{% url 'gestion:cupon_crear' %}" class="btn btn-primary btn-sm">+ Nuevo cupón</a>
         <a href="{% url 'gestion:dashboard' %}" class="btn btn-outline-secondary btn-sm">← Panel</a>
