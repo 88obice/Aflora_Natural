@@ -986,7 +986,13 @@ def _procesar_flow_token(token):
     if status == flow_api.STATUS_PAGADO:
         medio = flow_api.media_a_medio_detalle((data.get('paymentData') or {}).get('media'))
         logger.info('Flow confirmando pedido #%s (token=%s media=%s)', pedido.pk, token, medio)
-        _confirmar_pedido(pedido, mp_status='flow', medio_pago_detalle=medio)
+        # Nos quedamos con el pedido que DEVUELVE _confirmar_pedido: esa funcion
+        # trabaja sobre una instancia recargada (select_for_update), asi que la
+        # nuestra queda desactualizada en memoria. Sin esto, pago_flow_retorno
+        # veia estado_pago='pendiente' aunque en la BD ya estuviera pagado, y
+        # al cliente que acababa de pagar le mostraba "Estamos confirmando tu
+        # pago" en vez de la confirmacion.
+        pedido = _confirmar_pedido(pedido, mp_status='flow', medio_pago_detalle=medio)
     elif status in (flow_api.STATUS_RECHAZADO, flow_api.STATUS_ANULADO):
         logger.info('Flow rechazo pedido #%s status=%s', pedido.pk, status)
         if pedido.estado == 'pendiente':
